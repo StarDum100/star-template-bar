@@ -23,6 +23,24 @@ global.game = {
         set:      jest.fn().mockResolvedValue(undefined),
     },
 };
+const mockTemplateObject = {
+    document: null,
+    draw:    jest.fn().mockResolvedValue(undefined),
+    refresh: jest.fn(),
+    destroy: jest.fn(),
+};
+global.CONFIG = {
+    MeasuredTemplate: {
+        documentClass: jest.fn().mockImplementation(function(data) {
+            this.updateSource = jest.fn((update) => Object.assign(this, update));
+            Object.assign(this, data);
+        }),
+        objectClass: jest.fn().mockImplementation((doc) => {
+            mockTemplateObject.document = doc;
+            return mockTemplateObject;
+        }),
+    },
+};
 global.canvas = {
     stage: { pivot: { x: 500, y: 400 } },
     mousePosition: { x: 500, y: 400 },
@@ -33,6 +51,12 @@ global.canvas = {
         view: {
             addEventListener:    jest.fn(),
             removeEventListener: jest.fn(),
+        },
+    },
+    templates: {
+        preview: {
+            addChild:    jest.fn(),
+            removeChild: jest.fn(),
         },
     },
     scene: {
@@ -106,6 +130,13 @@ function setupBar(flagOverrides = {}) {
     global.canvas.app.view.addEventListener.mockClear();
     global.canvas.app.view.removeEventListener.mockClear();
     global.canvas.grid.getSnappedPosition.mockClear();
+    global.canvas.templates.preview.addChild.mockClear();
+    global.canvas.templates.preview.removeChild.mockClear();
+    global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+    global.CONFIG.MeasuredTemplate.objectClass.mockClear();
+    mockTemplateObject.draw.mockClear();
+    mockTemplateObject.refresh.mockClear();
+    mockTemplateObject.destroy.mockClear();
     document.body.innerHTML = "";
     hookCallbacks["ready"]();
 }
@@ -275,6 +306,43 @@ describe("Star Template Placer", () => {
             expect(global.canvas.app.view.addEventListener).toHaveBeenCalledWith(
                 "pointerdown", expect.any(Function)
             );
+        });
+
+        it("adds a preview object to canvas.templates.preview while waiting for placement", async () => {
+            document.querySelector(".stp-place-btn").click();
+            const { options } = openDialogHtml();
+            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+            const placeBtn  = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.canvas.templates.preview.addChild).toHaveBeenCalled();
+        });
+
+        it("removes the preview object after the canvas is clicked", async () => {
+            await triggerPlaceFromDialog();
+            expect(global.canvas.templates.preview.removeChild).toHaveBeenCalled();
+        });
+
+        it("updates the preview position on pointermove", async () => {
+            document.querySelector(".stp-place-btn").click();
+            const { options } = openDialogHtml();
+            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+            const placeBtn  = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
+
+            global.canvas.mousePosition = { x: 200, y: 100 };
+            const moveCalls = global.canvas.app.view.addEventListener.mock.calls
+                .filter(c => c[0] === "pointermove");
+            const moveHandler = moveCalls[moveCalls.length - 1]?.[1];
+            moveHandler?.();
+
+            expect(mockTemplateObject.document.updateSource).toHaveBeenCalledWith(
+                expect.objectContaining({ x: 200, y: 100 })
+            );
+            expect(mockTemplateObject.refresh).toHaveBeenCalled();
         });
 
         it("creates the template at canvas.mousePosition when the canvas is clicked", async () => {

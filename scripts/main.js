@@ -23,17 +23,41 @@ async function placeTemplate({ t, distance, angle, fillColor }) {
     }
 
     return new Promise((resolve) => {
-        ui.notifications.info(
-            `${MODULE_TITLE}: Click on the map to place the template. Press Esc to cancel.`
-        );
-
+        const { x: startX, y: startY } = canvas.mousePosition;
         const prevCursor = document.body.style.cursor;
         document.body.style.cursor = "crosshair";
 
+        // Build a preview template on the template layer's preview container
+        const doc = new CONFIG.MeasuredTemplate.documentClass({
+            t,
+            x:         startX,
+            y:         startY,
+            distance:  Math.max(5, distance),
+            angle:     angle ?? 57,
+            direction: 0,
+            fillColor,
+            borderColor: fillColor,
+            user: game.user.id,
+        }, { parent: canvas.scene });
+
+        const template = new CONFIG.MeasuredTemplate.objectClass(doc);
+        canvas.templates.preview.addChild(template);
+        template.draw?.().catch?.(() => {});
+
         const cleanup = () => {
+            canvas.templates.preview.removeChild(template);
+            template.destroy?.({ children: true });
+            canvas.app.view.removeEventListener("pointermove", onMove);
             canvas.app.view.removeEventListener("pointerdown", onPlace);
             window.removeEventListener("keydown", onCancel);
             document.body.style.cursor = prevCursor;
+        };
+
+        const onMove = () => {
+            const { x, y } = canvas.mousePosition;
+            const snapped  = canvas.grid?.getSnappedPosition?.(x, y) ?? { x, y };
+            template.document.updateSource({ x: snapped.x, y: snapped.y });
+            template.refresh?.();
         };
 
         const onPlace = async () => {
@@ -41,8 +65,7 @@ async function placeTemplate({ t, distance, angle, fillColor }) {
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
             await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
-                t,
-                x, y,
+                t, x, y,
                 distance:  Math.max(5, distance),
                 angle:     angle ?? 57,
                 direction: 0,
@@ -59,6 +82,7 @@ async function placeTemplate({ t, distance, angle, fillColor }) {
             resolve();
         };
 
+        canvas.app.view.addEventListener("pointermove", onMove);
         canvas.app.view.addEventListener("pointerdown", onPlace);
         window.addEventListener("keydown", onCancel);
     });
