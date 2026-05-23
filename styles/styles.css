@@ -119,6 +119,13 @@
     vertical-align: middle;
 }
 
+.stp-no-custom-row td {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    padding: 10px;
+}
+
 /* ── Add section ─────────────────────────────────────────────────────────── */
 
 .stp-add-section {

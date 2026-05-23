@@ -206,6 +206,10 @@ async function openConfig(bar, initialTab = "templates") {
     const tab   = (name) => `stp-tab${name === initialTab ? " stp-tab-active" : ""}`;
     const panel = (name) => `stp-tab-panel${name === initialTab ? "" : " stp-tab-panel-hidden"}`;
 
+    const renderTemplatesBody = () => pendingCustom.length === 0
+        ? '<tr class="stp-no-custom-row"><td colspan="5">No custom templates saved.</td></tr>'
+        : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
+
     const content = `
         <div class="stp-tabs">
             <button type="button" class="${tab("templates")}" data-tab="templates">Templates</button>
@@ -219,7 +223,7 @@ async function openConfig(bar, initialTab = "templates") {
                     <tr><th>Name</th><th>Shape</th><th>Size</th><th>Color</th><th></th></tr>
                 </thead>
                 <tbody>
-                    ${pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("")}
+                    ${renderTemplatesBody()}
                 </tbody>
             </table>
             <div class="stp-add-section">
@@ -330,9 +334,7 @@ async function openConfig(bar, initialTab = "templates") {
             $html.on("click", ".stp-delete-btn", (e) => {
                 const index = parseInt($(e.currentTarget).closest("tr").data("index"));
                 pendingCustom.splice(index, 1);
-                $html.find("tbody").html(
-                    pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("")
-                );
+                $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
             });
 
             // Add a custom template
@@ -351,9 +353,7 @@ async function openConfig(bar, initialTab = "templates") {
                 const angle     = parseFloat($html.find(".stp-new-angle").val()) || 57;
                 const fillColor = $html.find(".stp-new-color").val();
                 pendingCustom.push({ name, t, distance, angle, fillColor });
-                $html.find("tbody").html(
-                    pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("")
-                );
+                $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
                 $html.find(".stp-new-name").val("").focus();
             });
 

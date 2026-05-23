@@ -616,6 +616,26 @@ describe("Star Template Placer", () => {
             });
         });
 
+        describe("templates tab — empty state", () => {
+            it("shows the no-custom-templates message when there are no custom templates", () => {
+                setupBar();
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                expect(html.find(".stp-no-custom-row")).toHaveLength(1);
+            });
+
+            it("does not show the no-custom-templates message when custom templates exist", () => {
+                setupBar({
+                    customTemplates: [
+                        { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
+                    ]
+                });
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                expect(html.find(".stp-no-custom-row")).toHaveLength(0);
+            });
+        });
+
         describe("templates tab — add template", () => {
             let html;
             beforeEach(() => {
@@ -646,7 +666,14 @@ describe("Star Template Placer", () => {
             it("adds a row to the table when a valid template is added", () => {
                 html.find(".stp-new-name").val("Fireball");
                 html.find(".stp-add-btn").trigger("click");
-                expect(html.find("tbody tr")).toHaveLength(1);
+                expect(html.find("tbody tr[data-index]")).toHaveLength(1);
+            });
+
+            it("replaces the no-custom-templates message when the first template is added", () => {
+                expect(html.find(".stp-no-custom-row")).toHaveLength(1);
+                html.find(".stp-new-name").val("Fireball");
+                html.find(".stp-add-btn").trigger("click");
+                expect(html.find(".stp-no-custom-row")).toHaveLength(0);
             });
 
             it("clears the name input after adding", () => {
@@ -669,7 +696,7 @@ describe("Star Template Placer", () => {
             it("Enter in name field triggers add", () => {
                 html.find(".stp-new-name").val("Quick");
                 html.find(".stp-new-name").trigger({ type: "keydown", key: "Enter" });
-                expect(html.find("tbody tr")).toHaveLength(1);
+                expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
             it("does not warn when name is valid and unique", () => {
@@ -704,9 +731,21 @@ describe("Star Template Placer", () => {
                 });
                 document.querySelector(".stp-config-btn").click();
                 const { html } = openDialogHtml();
-                expect(html.find("tbody tr")).toHaveLength(1);
+                expect(html.find("tbody tr[data-index]")).toHaveLength(1);
                 html.find(".stp-delete-btn").trigger("click");
-                expect(html.find("tbody tr")).toHaveLength(0);
+                expect(html.find("tbody tr[data-index]")).toHaveLength(0);
+            });
+
+            it("shows the no-custom-templates message when the last template is deleted", () => {
+                setupBar({
+                    customTemplates: [
+                        { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
+                    ]
+                });
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find(".stp-delete-btn").trigger("click");
+                expect(html.find(".stp-no-custom-row")).toHaveLength(1);
             });
 
             it("re-indexes remaining rows correctly after delete", () => {
