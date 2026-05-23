@@ -509,12 +509,32 @@ describe("Star Template Placer", () => {
                 expect(html.find(".stp-remove-template-btn")).toHaveLength(2);
             });
 
-            it("clicking a remove button calls delete on that template", async () => {
+            it("does not call delete immediately when remove button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnRemoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
+                expect(tpl.delete).not.toHaveBeenCalled();
+            });
+
+            it("calls delete on marked templates when Save is clicked", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html, options } = openConfigOnRemoveTab([tpl]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+                const saveBtn = options.buttons.find(b => b.action === "save");
+                await saveBtn.callback(null, null, { element: container });
                 expect(tpl.delete).toHaveBeenCalled();
+            });
+
+            it("pending-removed template does not reappear when Remove tab is re-entered", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html } = openConfigOnRemoveTab([tpl]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find("[data-tab='templates']").trigger("click");
+                html.find("[data-tab='remove']").trigger("click");
+                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(0);
+                expect(html.find(".stp-remove-empty").length).toBe(1);
             });
 
             it("removes the row from the table after delete", async () => {
@@ -676,10 +696,11 @@ describe("Star Template Placer", () => {
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
-        it("dialog title includes module name", () => {
+        it("dialog title includes module name and save hint", () => {
             document.querySelector(".stp-config-btn").click();
             const options = global.foundry.applications.api.DialogV2.__lastOptions;
             expect(options.window.title).toContain("Star Template Placer");
+            expect(options.window.title).toContain("Save to persist changes");
         });
 
         describe("tab navigation", () => {

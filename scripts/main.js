@@ -253,6 +253,7 @@ async function openConfig(bar, initialTab = "templates") {
     let saved                = false;
     let pendingResetPosition = false;
     let originalPosition     = null;
+    const pendingRemovals    = [];
 
     const typeOptions = TEMPLATE_TYPES.map(t =>
         `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
@@ -314,7 +315,7 @@ async function openConfig(bar, initialTab = "templates") {
                     <input type="checkbox" class="stp-hide-bar-checkbox"${barHidden ? " checked" : ""}>
                     <div>
                         <strong>Hide Button Bar</strong>
-                        <p>Hide the button bar from the screen. Changes take effect when you click Save.</p>
+                        <p>Hide the button bar from the screen.</p>
                         <p>To restore it, uncheck this option in Configure Game Settings.</p>
                     </div>
                 </label>
@@ -334,7 +335,7 @@ async function openConfig(bar, initialTab = "templates") {
     `;
 
     await foundry.applications.api.DialogV2.wait({
-        window:      { title: "Star Template Placer — Configure" },
+        window:      { title: "Star Template Placer — Configure (save to persist changes)" },
         content,
         rejectClose: false,
         buttons: [
@@ -345,6 +346,10 @@ async function openConfig(bar, initialTab = "templates") {
                     saved = true;
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
+                    for (const id of pendingRemovals) {
+                        const tpl = canvas?.scene?.templates?.get(id);
+                        if (tpl) await tpl.delete();
+                    }
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
@@ -362,7 +367,8 @@ async function openConfig(bar, initialTab = "templates") {
 
             function renderRemoveTab() {
                 const removePanelEl = $html.find('[data-panel="remove"]');
-                const templates = canvas?.scene?.templates?.contents ?? [];
+                const templates = (canvas?.scene?.templates?.contents ?? [])
+                    .filter(t => !pendingRemovals.includes(t.id));
                 if (templates.length === 0) {
                     removePanelEl.html('<p class="stp-remove-empty">No templates on the map.</p>');
                 } else {
@@ -416,19 +422,11 @@ async function openConfig(bar, initialTab = "templates") {
                 if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
             });
 
-            // Remove tab: delete individual templates immediately
-            $html.on("click", ".stp-remove-template-btn", async (e) => {
+            // Remove tab: stage deletions — executed on Save
+            $html.on("click", ".stp-remove-template-btn", (e) => {
                 const row = $(e.currentTarget).closest("tr");
                 const id  = row.attr("data-id");
-                const tpl = canvas.scene.templates.get(id);
-                if (tpl) {
-                    try {
-                        await tpl.delete();
-                    } catch {
-                        ui.notifications.warn(`${MODULE_TITLE}: Could not remove template.`);
-                        return;
-                    }
-                }
+                pendingRemovals.push(id);
                 row.remove();
                 if ($html.find('[data-panel="remove"] tbody tr[data-id]').length === 0) {
                     $html.find('[data-panel="remove"]').html('<p class="stp-remove-empty">No templates on the map.</p>');
