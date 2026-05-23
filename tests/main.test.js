@@ -25,6 +25,16 @@ global.game = {
 };
 global.canvas = {
     stage: { pivot: { x: 500, y: 400 } },
+    mousePosition: { x: 500, y: 400 },
+    grid: {
+        getSnappedPosition: jest.fn((x, y) => ({ x, y })),
+    },
+    app: {
+        view: {
+            addEventListener:    jest.fn(),
+            removeEventListener: jest.fn(),
+        },
+    },
     scene: {
         grid: { distance: 5 },
         templates: {
@@ -35,7 +45,10 @@ global.canvas = {
     },
 };
 global.ui = {
-    notifications: { warn: jest.fn() },
+    notifications: {
+        warn: jest.fn(),
+        info: jest.fn(),
+    },
 };
 global.foundry = { applications: { api: { DialogV2: {} } } };
 global.foundry.applications.api.DialogV2.wait = jest.fn().mockImplementation((options) => {
@@ -62,6 +75,27 @@ function openDialogHtml() {
     return { html, options };
 }
 
+async function simulateCanvasClick() {
+    const calls = global.canvas.app.view.addEventListener.mock.calls
+        .filter(c => c[0] === "pointerdown");
+    const handler = calls[calls.length - 1]?.[1];
+    if (!handler) return;
+    await handler();
+    await new Promise(r => setTimeout(r, 0));
+}
+
+async function triggerPlaceFromDialog(htmlModifier) {
+    document.querySelector(".stp-place-btn").click();
+    const { html, options } = openDialogHtml();
+    if (htmlModifier) htmlModifier(html);
+    const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+    const placeBtn  = options.buttons.find(b => b.action === "place");
+    placeBtn.callback(null, null, { element: container });
+    global.foundry.applications.api.DialogV2.__resolveDialog("place");
+    await new Promise(r => setTimeout(r, 0));
+    await simulateCanvasClick();
+}
+
 function setupBar(flagOverrides = {}) {
     const { barHidden, ...flagsOnly } = flagOverrides;
     global.game.user.getFlag.mockImplementation((ns, key) => flagsOnly[key] ?? undefined);
@@ -69,6 +103,9 @@ function setupBar(flagOverrides = {}) {
     global.canvas.scene.templates.contents = [];
     global.canvas.scene.templates.get.mockReset();
     global.canvas.scene.createEmbeddedDocuments.mockClear();
+    global.canvas.app.view.addEventListener.mockClear();
+    global.canvas.app.view.removeEventListener.mockClear();
+    global.canvas.grid.getSnappedPosition.mockClear();
     document.body.innerHTML = "";
     hookCallbacks["ready"]();
 }
@@ -227,56 +264,52 @@ describe("Star Template Placer", () => {
             expect(html.find(".stp-cone-row").css("display")).toBe("none");
         });
 
-        it("Place button callback calls createEmbeddedDocuments", async () => {
+        it("Place button registers a canvas click listener for placement", async () => {
             document.querySelector(".stp-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            const placeBtn = options.buttons.find(b => b.action === "place");
-            await placeBtn.callback(null, null, { element: container });
-            expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
-                "MeasuredTemplate",
-                [expect.objectContaining({ t: "circle", distance: expect.any(Number) })]
+            const placeBtn  = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.canvas.app.view.addEventListener).toHaveBeenCalledWith(
+                "pointerdown", expect.any(Function)
             );
         });
 
-        it("places template at canvas pivot position", async () => {
-            global.canvas.stage.pivot = { x: 700, y: 300 };
-            document.querySelector(".stp-place-btn").click();
-            const { options } = openDialogHtml();
-            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            const placeBtn = options.buttons.find(b => b.action === "place");
-            await placeBtn.callback(null, null, { element: container });
+        it("creates the template at canvas.mousePosition when the canvas is clicked", async () => {
+            global.canvas.mousePosition = { x: 300, y: 150 };
+            await triggerPlaceFromDialog();
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
-                [expect.objectContaining({ x: 700, y: 300 })]
+                [expect.objectContaining({ t: "circle", x: 300, y: 150 })]
             );
-            global.canvas.stage.pivot = { x: 500, y: 400 };
         });
 
         it("clamps distance to minimum 5", async () => {
-            document.querySelector(".stp-place-btn").click();
-            const { html, options } = openDialogHtml();
-            html.find(".stp-distance-input").val("-10");
-            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            const placeBtn = options.buttons.find(b => b.action === "place");
-            await placeBtn.callback(null, null, { element: container });
+            await triggerPlaceFromDialog(html => html.find(".stp-distance-input").val("-10"));
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
                 [expect.objectContaining({ distance: 5 })]
             );
         });
 
-        it("warns and does not create template when canvas.scene is null", async () => {
+        it("warns and does not register a listener when canvas.scene is null", async () => {
             const originalScene = global.canvas.scene;
             global.canvas.scene = null;
             global.ui.notifications.warn.mockClear();
             document.querySelector(".stp-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            const placeBtn = options.buttons.find(b => b.action === "place");
-            await placeBtn.callback(null, null, { element: container });
+            const placeBtn  = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No active scene")
+            );
+            expect(global.canvas.app.view.addEventListener).not.toHaveBeenCalledWith(
+                "pointerdown", expect.any(Function)
             );
             global.canvas.scene = originalScene;
         });
@@ -492,7 +525,7 @@ describe("Star Template Placer", () => {
             expect(btn.textContent.trim()).toBe("Call Lightning");
         });
 
-        it("clicking a custom button calls createEmbeddedDocuments", async () => {
+        it("clicking a custom button registers a canvas click listener", async () => {
             setupBar({
                 customTemplates: [
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff4400" }
@@ -500,6 +533,20 @@ describe("Star Template Placer", () => {
             });
             document.querySelector(".stp-custom-btn").click();
             await new Promise(r => setTimeout(r, 0));
+            expect(global.canvas.app.view.addEventListener).toHaveBeenCalledWith(
+                "pointerdown", expect.any(Function)
+            );
+        });
+
+        it("creates the template with correct data when canvas is clicked after custom button", async () => {
+            setupBar({
+                customTemplates: [
+                    { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff4400" }
+                ]
+            });
+            document.querySelector(".stp-custom-btn").click();
+            await new Promise(r => setTimeout(r, 0));
+            await simulateCanvasClick();
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
                 [expect.objectContaining({ t: "circle", distance: 20, fillColor: "#ff4400" })]
@@ -925,17 +972,22 @@ describe("Star Template Placer", () => {
             expect(() => hookCallbacks["ready"]()).not.toThrow();
         });
 
-        it("each custom button click creates an independent template call", async () => {
+        it("each custom button click followed by a canvas click creates an independent template", async () => {
             setupBar({
                 customTemplates: [
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                 ]
             });
-            global.canvas.scene.createEmbeddedDocuments.mockClear();
             const btn = document.querySelector(".stp-custom-btn");
-            btn.click();
+
             btn.click();
             await new Promise(r => setTimeout(r, 0));
+            await simulateCanvasClick();
+
+            btn.click();
+            await new Promise(r => setTimeout(r, 0));
+            await simulateCanvasClick();
+
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
         });
     });

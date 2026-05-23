@@ -16,27 +16,52 @@ function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
 }
 
-function getViewCenter() {
-    return { x: canvas.stage.pivot.x, y: canvas.stage.pivot.y };
-}
-
 async function placeTemplate({ t, distance, angle, fillColor }) {
     if (!canvas?.scene) {
         ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
         return;
     }
-    const center = getViewCenter();
-    await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
-        t,
-        x: center.x,
-        y: center.y,
-        distance: Math.max(5, distance),
-        angle: angle ?? 57,
-        direction: 0,
-        fillColor,
-        borderColor: fillColor,
-        user: game.user.id,
-    }]);
+
+    return new Promise((resolve) => {
+        ui.notifications.info(
+            `${MODULE_TITLE}: Click on the map to place the template. Press Esc to cancel.`
+        );
+
+        const prevCursor = document.body.style.cursor;
+        document.body.style.cursor = "crosshair";
+
+        const cleanup = () => {
+            canvas.app.view.removeEventListener("pointerdown", onPlace);
+            window.removeEventListener("keydown", onCancel);
+            document.body.style.cursor = prevCursor;
+        };
+
+        const onPlace = async () => {
+            cleanup();
+            const { x: rawX, y: rawY } = canvas.mousePosition;
+            const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
+            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
+                t,
+                x, y,
+                distance:  Math.max(5, distance),
+                angle:     angle ?? 57,
+                direction: 0,
+                fillColor,
+                borderColor: fillColor,
+                user: game.user.id,
+            }]);
+            resolve();
+        };
+
+        const onCancel = (e) => {
+            if (e.key !== "Escape") return;
+            cleanup();
+            resolve();
+        };
+
+        canvas.app.view.addEventListener("pointerdown", onPlace);
+        window.addEventListener("keydown", onCancel);
+    });
 }
 
 function templateOwnerName(t) {
@@ -163,6 +188,8 @@ async function openPlaceDialog() {
         </div>
     `;
 
+    let templateConfig = null;
+
     await foundry.applications.api.DialogV2.wait({
         window:      { title: "Place Template" },
         content,
@@ -171,13 +198,13 @@ async function openPlaceDialog() {
             {
                 action: "place",
                 label: "Place",
-                callback: async (event, button, dialog) => {
+                callback: (event, button, dialog) => {
                     const $html     = $(dialog.element);
                     const t         = $html.find(".stp-type-select").val();
                     const distance  = Math.max(5, parseFloat($html.find(".stp-distance-input").val()) || 20);
                     const angle     = parseFloat($html.find(".stp-angle-input").val()) || 57;
                     const fillColor = $html.find(".stp-color-input").val();
-                    await placeTemplate({ t, distance, angle, fillColor });
+                    templateConfig  = { t, distance, angle, fillColor };
                 }
             },
             { action: "cancel", label: "Cancel", default: true }
@@ -189,6 +216,10 @@ async function openPlaceDialog() {
             });
         }
     });
+
+    if (templateConfig) {
+        await placeTemplate(templateConfig);
+    }
 }
 
 async function openConfig(bar, initialTab = "templates") {
