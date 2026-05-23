@@ -1,0 +1,255 @@
+/* ── Bar ─────────────────────────────────────────────────────────────────── */
+
+.stp-template-bar {
+    position: fixed;
+    z-index: 70;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 6px;
+    pointer-events: all;
+}
+
+.stp-template-bar button {
+    color: white;
+    background: #2c2c2c;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.stp-template-bar button:hover {
+    background: #444;
+}
+
+.stp-bar-handle {
+    color: #777;
+    cursor: grab;
+    font-size: 18px;
+    padding: 0 2px;
+    user-select: none;
+    line-height: 1;
+}
+
+.stp-bar-handle:hover  { color: #aaa; }
+.stp-bar-handle:active { cursor: grabbing; }
+
+.stp-config-btn {
+    opacity: 0.6;
+    font-size: 14px;
+}
+
+.stp-config-btn:hover { opacity: 1; }
+
+.stp-custom-btn {
+    border-left-width: 3px !important;
+}
+
+/* ── Config dialog tabs ──────────────────────────────────────────────────── */
+
+.stp-tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid #555;
+    margin-bottom: 10px;
+}
+
+.stp-tab {
+    background: #1a1a1a;
+    border: 1px solid #555;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    color: #aaa;
+    cursor: pointer;
+    padding: 4px 14px;
+    margin-bottom: -1px;
+}
+
+.stp-tab.stp-tab-active {
+    background: #2c2c2c;
+    color: white;
+    border-bottom: 1px solid #2c2c2c;
+}
+
+.stp-tab-panel-hidden { display: none; }
+
+/* ── Templates tab ───────────────────────────────────────────────────────── */
+
+.stp-config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+}
+
+.stp-config-table th,
+.stp-config-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #444;
+    text-align: left;
+}
+
+.stp-delete-cell {
+    text-align: center;
+    width: 32px;
+}
+
+.stp-delete-btn {
+    background: none;
+    border: none;
+    color: #c44;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    line-height: 1;
+}
+
+.stp-delete-btn:hover { color: #f66; }
+
+.stp-color-swatch {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #777;
+    vertical-align: middle;
+}
+
+/* ── Add section ─────────────────────────────────────────────────────────── */
+
+.stp-add-section {
+    margin-top: 12px;
+    border-top: 1px solid #444;
+    padding-top: 10px;
+}
+
+.stp-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 0 4px;
+}
+
+.stp-form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stp-form-row label {
+    width: 70px;
+    flex-shrink: 0;
+    color: #ccc;
+    font-size: 13px;
+}
+
+.stp-form-row input[type="text"],
+.stp-form-row input[type="number"],
+.stp-form-row select {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: white;
+    padding: 3px 8px;
+    height: 28px;
+    box-sizing: border-box;
+}
+
+.stp-form-row input[type="color"] {
+    flex: 1;
+    height: 28px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #1a1a1a;
+    padding: 1px;
+    box-sizing: border-box;
+}
+
+.stp-add-btn {
+    background: #2c2c2c;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    padding: 4px 10px;
+    height: 28px;
+    margin-top: 4px;
+    align-self: flex-end;
+}
+
+.stp-add-btn:hover { background: #444; }
+
+/* ── Place template dialog ───────────────────────────────────────────────── */
+
+.stp-place-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+/* ── Extra tab ───────────────────────────────────────────────────────────── */
+
+.stp-extra-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 6px 0 10px;
+}
+
+.stp-extra-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.stp-extra-item input[type="checkbox"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.stp-extra-item p {
+    color: #888;
+    font-size: 12px;
+    margin: 3px 0 0;
+}
+
+/* ── Reset tab ───────────────────────────────────────────────────────────── */
+
+.stp-reset-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 6px 0 10px;
+}
+
+.stp-reset-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stp-reset-item p {
+    color: #888;
+    font-size: 12px;
+    margin: 3px 0 0;
+}
+
+.stp-reset-position-btn {
+    background: #2c2c2c;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    padding: 4px 10px;
+    align-self: flex-start;
+}
+
+.stp-reset-position-btn:hover { background: #444; }
