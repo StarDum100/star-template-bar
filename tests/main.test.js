@@ -14,6 +14,9 @@ global.game = {
         setFlag:   jest.fn().mockResolvedValue(undefined),
         unsetFlag: jest.fn().mockResolvedValue(undefined),
     },
+    users: {
+        get: jest.fn().mockReturnValue({ name: "TestUser" }),
+    },
     settings: {
         register: jest.fn(),
         get:      jest.fn().mockReturnValue(false),
@@ -23,7 +26,11 @@ global.game = {
 global.canvas = {
     stage: { pivot: { x: 500, y: 400 } },
     scene: {
-        templates: { contents: [] },
+        grid: { distance: 5 },
+        templates: {
+            contents: [],
+            get: jest.fn(),
+        },
         createEmbeddedDocuments: jest.fn().mockResolvedValue([]),
     },
 };
@@ -60,6 +67,7 @@ function setupBar(flagOverrides = {}) {
     global.game.user.getFlag.mockImplementation((ns, key) => flagsOnly[key] ?? undefined);
     global.game.settings.get.mockImplementation((ns, key) => key === "barHidden" ? (barHidden ?? false) : false);
     global.canvas.scene.templates.contents = [];
+    global.canvas.scene.templates.get.mockReset();
     global.canvas.scene.createEmbeddedDocuments.mockClear();
     document.body.innerHTML = "";
     hookCallbacks["ready"]();
@@ -281,6 +289,20 @@ describe("Star Template Placer", () => {
     });
 
     describe("Remove button", () => {
+        function makeTemplate(id, user, t, distance) {
+            return { id, user, t, distance, delete: jest.fn().mockResolvedValue(undefined) };
+        }
+
+        function openConfigOnRemoveTab(templates) {
+            setupBar();
+            global.canvas.scene.templates.contents = templates;
+            global.canvas.scene.templates.get.mockImplementation(id =>
+                templates.find(t => t.id === id)
+            );
+            document.querySelector(".stp-remove-btn").click();
+            return openDialogHtml();
+        }
+
         beforeEach(() => { setupBar(); });
 
         it("warns when there are no templates to remove", async () => {
@@ -293,42 +315,6 @@ describe("Star Template Placer", () => {
             );
         });
 
-        it("calls delete on the last template", async () => {
-            const mockDelete = jest.fn().mockResolvedValue(undefined);
-            global.canvas.scene.templates.contents = [
-                { user: "other-user", delete: jest.fn() },
-                { user: "user-001",   delete: mockDelete },
-            ];
-            document.querySelector(".stp-remove-btn").click();
-            await new Promise(r => setTimeout(r, 0));
-            expect(mockDelete).toHaveBeenCalled();
-        });
-
-        it("prefers the current user's last template over another user's", async () => {
-            const myDelete    = jest.fn().mockResolvedValue(undefined);
-            const otherDelete = jest.fn().mockResolvedValue(undefined);
-            global.canvas.scene.templates.contents = [
-                { user: "other-user", delete: otherDelete },
-                { user: "user-001",   delete: myDelete },
-                { user: "other-user", delete: jest.fn() },
-            ];
-            document.querySelector(".stp-remove-btn").click();
-            await new Promise(r => setTimeout(r, 0));
-            expect(myDelete).toHaveBeenCalled();
-            expect(otherDelete).not.toHaveBeenCalled();
-        });
-
-        it("falls back to the last template when no templates belong to current user", async () => {
-            const fallbackDelete = jest.fn().mockResolvedValue(undefined);
-            global.canvas.scene.templates.contents = [
-                { user: "other-user", delete: jest.fn() },
-                { user: "other-user", delete: fallbackDelete },
-            ];
-            document.querySelector(".stp-remove-btn").click();
-            await new Promise(r => setTimeout(r, 0));
-            expect(fallbackDelete).toHaveBeenCalled();
-        });
-
         it("warns when canvas.scene is null", async () => {
             const originalScene = global.canvas.scene;
             global.canvas.scene = null;
@@ -339,6 +325,144 @@ describe("Star Template Placer", () => {
                 expect.stringContaining("No active scene")
             );
             global.canvas.scene = originalScene;
+        });
+
+        it("does not open a dialog when there are no templates", async () => {
+            global.foundry.applications.api.DialogV2.wait.mockClear();
+            global.canvas.scene.templates.contents = [];
+            document.querySelector(".stp-remove-btn").click();
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
+        });
+
+        it("opens the config dialog when templates exist", () => {
+            global.foundry.applications.api.DialogV2.wait.mockClear();
+            global.canvas.scene.templates.contents = [makeTemplate("t1", "user-001", "circle", 4)];
+            document.querySelector(".stp-remove-btn").click();
+            expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
+        });
+
+        it("opens with the Remove tab active", () => {
+            const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+            expect(html.find(".stp-tab.stp-tab-active").data("tab")).toBe("remove");
+        });
+
+        it("Remove tab panel is visible on open", () => {
+            const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+            expect(html.find("[data-panel='remove']").hasClass("stp-tab-panel-hidden")).toBe(false);
+        });
+
+        describe("remove tab content", () => {
+            it("shows one row per scene template", () => {
+                const { html } = openConfigOnRemoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-001", "cone",   6),
+                ]);
+                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(2);
+            });
+
+            it("shows the owner name via template.author", () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.author = { name: "Gandalf" };
+                const { html } = openConfigOnRemoveTab([tpl]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Gandalf");
+            });
+
+            it("falls back to game.users when author is absent", () => {
+                global.game.users.get.mockReturnValue({ name: "Saruman" });
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Saruman");
+            });
+
+            it("shows 'Unknown' when neither author nor game.users resolves", () => {
+                global.game.users.get.mockReturnValue(undefined);
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-999", "circle", 4)]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Unknown");
+            });
+
+            it("shows the template type", () => {
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "cone", 4)]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("cone");
+            });
+
+            it("multiplies distance by grid.distance to display feet", () => {
+                global.canvas.scene.grid.distance = 5;
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(2).text()).toBe("20ft");
+            });
+
+            it("shows an empty state message when there are no templates", () => {
+                setupBar();
+                global.canvas.scene.templates.contents = [];
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find("[data-tab='remove']").trigger("click");
+                expect(html.find(".stp-remove-empty").length).toBe(1);
+            });
+
+            it("each row has a remove button", () => {
+                const { html } = openConfigOnRemoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-001", "circle", 4),
+                ]);
+                expect(html.find(".stp-remove-template-btn")).toHaveLength(2);
+            });
+
+            it("clicking a remove button calls delete on that template", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html } = openConfigOnRemoveTab([tpl]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                expect(tpl.delete).toHaveBeenCalled();
+            });
+
+            it("removes the row from the table after delete", async () => {
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(0);
+            });
+
+            it("shows empty state when last template is removed", async () => {
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                expect(html.find(".stp-remove-empty").length).toBe(1);
+            });
+
+            it("only removes the clicked row, leaving others", async () => {
+                const { html } = openConfigOnRemoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-001", "circle", 6),
+                ]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(1);
+                expect(html.find('[data-panel="remove"] tbody tr[data-id="t2"]')).toHaveLength(1);
+            });
+
+            it("still removes the row when the template is already gone from the scene", async () => {
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                global.canvas.scene.templates.get.mockReturnValue(undefined);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(0);
+            });
+
+            describe("XSS in template data", () => {
+                it("does not execute a script tag in the owner name", () => {
+                    window.__xssOwner = undefined;
+                    global.game.users.get.mockReturnValue({ name: "<script>window.__xssOwner=true</script>" });
+                    openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                    expect(window.__xssOwner).toBeUndefined();
+                });
+
+                it("does not execute a script tag in the template type", () => {
+                    window.__xssType = undefined;
+                    openConfigOnRemoveTab([makeTemplate("t1", "user-001", "<script>window.__xssType=true</script>", 4)]);
+                    expect(window.__xssType).toBeUndefined();
+                });
+            });
         });
     });
 
@@ -482,7 +606,7 @@ describe("Star Template Placer", () => {
             });
 
             it("exactly one panel is visible at all times", () => {
-                for (const tab of ["extra", "reset", "templates", "extra"]) {
+                for (const tab of ["reset", "extra", "templates", "reset"]) {
                     html.find(`[data-tab='${tab}']`).trigger("click");
                     const visibleCount = ["templates", "extra", "reset"].filter(
                         name => !html.find(`[data-panel="${name}"]`).hasClass("stp-tab-panel-hidden")

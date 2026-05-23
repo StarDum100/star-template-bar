@@ -39,19 +39,35 @@ async function placeTemplate({ t, distance, angle, fillColor }) {
     }]);
 }
 
-async function removeLastTemplate() {
-    if (!canvas?.scene) {
-        ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
-        return;
-    }
-    const templates = canvas.scene.templates.contents;
-    if (templates.length === 0) {
-        ui.notifications.warn(`${MODULE_TITLE}: No templates to remove.`);
-        return;
-    }
-    const mine = templates.filter(t => t.user === game.user.id);
-    const target = mine.length > 0 ? mine[mine.length - 1] : templates[templates.length - 1];
-    await target.delete();
+function templateOwnerName(t) {
+    return t.author?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
+}
+
+function templateDistanceFt(t) {
+    const gridDistance = canvas?.scene?.grid?.distance ?? 1;
+    return Math.round(t.distance * gridDistance);
+}
+
+function buildRemoveContent(templates) {
+    const rows = templates.map(t => {
+        const owner = escapeHtml(templateOwnerName(t));
+        return `
+            <tr data-id="${escapeHtml(t.id)}">
+                <td>${owner}</td>
+                <td>${escapeHtml(t.t)}</td>
+                <td>${templateDistanceFt(t)}ft</td>
+                <td class="stp-delete-cell">
+                    <button type="button" class="stp-remove-template-btn">&#10005;</button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+    return `
+        <table class="stp-config-table">
+            <thead><tr><th>Owner</th><th>Shape</th><th>Size</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
 }
 
 function applyBarPosition(bar, savedPos = game.user.getFlag(MODULE_ID, "barPosition")) {
@@ -175,8 +191,8 @@ async function openPlaceDialog() {
     });
 }
 
-async function openConfig(bar) {
-    const barHidden    = game.settings.get(MODULE_ID, "barHidden");
+async function openConfig(bar, initialTab = "templates") {
+    const barHidden     = game.settings.get(MODULE_ID, "barHidden");
     const pendingCustom = [...getCustomTemplates()];
 
     let saved                = false;
@@ -187,13 +203,17 @@ async function openConfig(bar) {
         `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
     ).join("");
 
+    const tab   = (name) => `stp-tab${name === initialTab ? " stp-tab-active" : ""}`;
+    const panel = (name) => `stp-tab-panel${name === initialTab ? "" : " stp-tab-panel-hidden"}`;
+
     const content = `
         <div class="stp-tabs">
-            <button type="button" class="stp-tab stp-tab-active" data-tab="templates">Templates</button>
-            <button type="button" class="stp-tab" data-tab="extra">Extra</button>
-            <button type="button" class="stp-tab" data-tab="reset">Reset</button>
+            <button type="button" class="${tab("templates")}" data-tab="templates">Templates</button>
+            <button type="button" class="${tab("remove")}"    data-tab="remove">Remove</button>
+            <button type="button" class="${tab("reset")}"     data-tab="reset">Reset</button>
+            <button type="button" class="${tab("extra")}"     data-tab="extra">Extra</button>
         </div>
-        <div class="stp-tab-panel" data-panel="templates">
+        <div class="${panel("templates")}" data-panel="templates">
             <table class="stp-config-table">
                 <thead>
                     <tr><th>Name</th><th>Shape</th><th>Size</th><th>Color</th><th></th></tr>
@@ -228,7 +248,8 @@ async function openConfig(bar) {
                 </div>
             </div>
         </div>
-        <div class="stp-tab-panel stp-tab-panel-hidden" data-panel="extra">
+        <div class="${panel("remove")}" data-panel="remove"></div>
+        <div class="${panel("extra")}" data-panel="extra">
             <div class="stp-extra-panel">
                 <label class="stp-extra-item">
                     <input type="checkbox" class="stp-hide-bar-checkbox"${barHidden ? " checked" : ""}>
@@ -240,7 +261,7 @@ async function openConfig(bar) {
                 </label>
             </div>
         </div>
-        <div class="stp-tab-panel stp-tab-panel-hidden" data-panel="reset">
+        <div class="${panel("reset")}" data-panel="reset">
             <div class="stp-reset-panel">
                 <div class="stp-reset-item">
                     <div>
@@ -280,13 +301,24 @@ async function openConfig(bar) {
         render: (event, dialog) => {
             const $html = $(dialog.element);
 
+            function renderRemoveTab() {
+                const removePanelEl = $html.find('[data-panel="remove"]');
+                const templates = canvas?.scene?.templates?.contents ?? [];
+                if (templates.length === 0) {
+                    removePanelEl.html('<p class="stp-remove-empty">No templates on the map.</p>');
+                } else {
+                    removePanelEl.html(buildRemoveContent(templates));
+                }
+            }
+
             // Tab switching
             $html.on("click", ".stp-tab", (e) => {
-                const tab = e.currentTarget.dataset.tab;
+                const tabName = e.currentTarget.dataset.tab;
                 $html.find(".stp-tab").removeClass("stp-tab-active");
                 $(e.currentTarget).addClass("stp-tab-active");
                 $html.find(".stp-tab-panel").addClass("stp-tab-panel-hidden");
-                $html.find(`[data-panel="${tab}"]`).removeClass("stp-tab-panel-hidden");
+                $html.find(`[data-panel="${tabName}"]`).removeClass("stp-tab-panel-hidden");
+                if (tabName === "remove") renderRemoveTab();
             });
 
             // Cone angle row toggle in add form
@@ -314,9 +346,9 @@ async function openConfig(bar) {
                     ui.notifications.warn(`${MODULE_TITLE}: A template named "${escapeHtml(name)}" already exists.`);
                     return;
                 }
-                const t        = $html.find(".stp-new-type").val();
-                const distance = Math.max(5, parseFloat($html.find(".stp-new-distance").val()) || 20);
-                const angle    = parseFloat($html.find(".stp-new-angle").val()) || 57;
+                const t         = $html.find(".stp-new-type").val();
+                const distance  = Math.max(5, parseFloat($html.find(".stp-new-distance").val()) || 20);
+                const angle     = parseFloat($html.find(".stp-new-angle").val()) || 57;
                 const fillColor = $html.find(".stp-new-color").val();
                 pendingCustom.push({ name, t, distance, angle, fillColor });
                 $html.find("tbody").html(
@@ -327,6 +359,25 @@ async function openConfig(bar) {
 
             $html.on("keydown", ".stp-new-name", (e) => {
                 if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
+            });
+
+            // Remove tab: delete individual templates immediately
+            $html.on("click", ".stp-remove-template-btn", async (e) => {
+                const row = $(e.currentTarget).closest("tr");
+                const id  = row.attr("data-id");
+                const tpl = canvas.scene.templates.get(id);
+                if (tpl) {
+                    try {
+                        await tpl.delete();
+                    } catch {
+                        ui.notifications.warn(`${MODULE_TITLE}: Could not remove template.`);
+                        return;
+                    }
+                }
+                row.remove();
+                if ($html.find('[data-panel="remove"] tbody tr[data-id]').length === 0) {
+                    $html.find('[data-panel="remove"]').html('<p class="stp-remove-empty">No templates on the map.</p>');
+                }
             });
 
             // Extra tab: live preview hide/show
@@ -346,6 +397,8 @@ async function openConfig(bar) {
                 pendingResetPosition = true;
                 applyBarPosition(bar, null);
             });
+
+            if (initialTab === "remove") renderRemoveTab();
         }
     });
 
@@ -376,7 +429,7 @@ Hooks.once("ready", () => {
     const bar = $(`<div class="stp-template-bar">
         <span class="stp-bar-handle" title="Drag to move bar">&#8801;</span>
         <button class="stp-place-btn" title="Place a template on the map">&#8853; Place</button>
-        <button class="stp-remove-btn" title="Remove the last placed template">&#10005; Remove</button>
+        <button class="stp-remove-btn" title="Remove placed templates">&#10005; Remove</button>
         <button class="stp-config-btn" title="Configure templates">&#9881;</button>
     </div>`);
 
@@ -387,7 +440,17 @@ Hooks.once("ready", () => {
     if (game.settings.get(MODULE_ID, "barHidden")) bar.hide();
 
     bar.find(".stp-place-btn").on("click",  () => openPlaceDialog());
-    bar.find(".stp-remove-btn").on("click", () => removeLastTemplate());
+    bar.find(".stp-remove-btn").on("click", () => {
+        if (!canvas?.scene) {
+            ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
+            return;
+        }
+        if (canvas.scene.templates.contents.length === 0) {
+            ui.notifications.warn(`${MODULE_TITLE}: No templates to remove.`);
+            return;
+        }
+        openConfig(bar, "remove");
+    });
     bar.find(".stp-config-btn").on("click", () => openConfig(bar));
 });
 
