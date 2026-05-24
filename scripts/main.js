@@ -10,17 +10,19 @@ function escapeHtml(str) {
         .replace(/"/g, "&quot;");
 }
 
-const TEMPLATE_TYPES = ["circle", "cone", "ray"];
+const TEMPLATE_TYPES = ["circle", "cone", "ray", "rect"];
 
 function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
 }
 
-async function placeTemplate({ t, distance, angle, width, fillColor, name }) {
+async function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     if (!canvas?.scene) {
         ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
         return;
     }
+
+    const effectiveDistance = (t === "rect") ? (height ?? width) : distance;
 
     return new Promise((resolve) => {
         const { x: startX, y: startY } = canvas.mousePosition;
@@ -32,10 +34,10 @@ async function placeTemplate({ t, distance, angle, width, fillColor, name }) {
             t,
             x:         startX,
             y:         startY,
-            distance:  Math.max(5, distance),
+            distance:  Math.max(5, effectiveDistance),
             angle:     angle ?? 57,
             width:     Math.max(5, width ?? distance),
-            direction: 0,
+            direction: t === "rect" ? 45 : 0,
             fillColor,
             borderColor: fillColor,
             user: game.user.id,
@@ -67,14 +69,19 @@ async function placeTemplate({ t, distance, angle, width, fillColor, name }) {
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
             await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
                 t, x, y,
-                distance:  Math.max(5, distance),
+                distance:  Math.max(5, effectiveDistance),
                 angle:     angle ?? 57,
                 width:     Math.max(5, width ?? distance),
-                direction: 0,
+                direction: t === "rect" ? 45 : 0,
                 fillColor,
                 borderColor: fillColor,
                 user: game.user.id,
-                ...(name ? { flags: { [MODULE_ID]: { name } } } : {}),
+                flags: {
+                    [MODULE_ID]: {
+                        ...(name ? { name } : {}),
+                        ...(t === "rect" ? { rectWidth: Math.max(5, width), rectHeight: Math.max(5, height ?? width) } : {}),
+                    }
+                },
             }]);
             resolve();
         };
@@ -106,14 +113,23 @@ function buildRemoveContent(templates) {
         const name      = escapeHtml(String(t.flags?.[MODULE_ID]?.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
         const safeColor = escapeHtml(String(t.fillColor ?? "#000000"));
-        const widthCell = t.t === "ray"  ? `${Math.round((t.width ?? 0) * gridDistance)}ft` : "—";
+        let widthCell;
+        if (t.t === "ray") {
+            widthCell = `${Math.round((t.width ?? 0) * gridDistance)}ft`;
+        } else if (t.t === "rect") {
+            const rw = t.flags?.[MODULE_ID]?.rectWidth;
+            const rh = t.flags?.[MODULE_ID]?.rectHeight;
+            widthCell = (rw != null && rh != null) ? `${rw}ft × ${rh}ft` : "—";
+        } else {
+            widthCell = "—";
+        }
         const angleCell = t.t === "cone" ? `${t.angle ?? 57}°` : "—";
         return `
             <tr data-id="${escapeHtml(t.id)}">
                 <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
-                <td>${templateDistanceFt(t)}ft</td>
+                <td>${t.t === "rect" ? "—" : `${templateDistanceFt(t)}ft`}</td>
                 <td>${widthCell}</td>
                 <td>${angleCell}</td>
                 <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
@@ -184,13 +200,15 @@ function makeCustomRow(tpl, index) {
     const safeName  = escapeHtml(tpl.name);
     const safeType  = escapeHtml(tpl.t);
     const safeColor = escapeHtml(tpl.fillColor);
-    const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft` : "—";
+    const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft`
+                   : tpl.t === "rect" ? `${tpl.width ?? 5}ft × ${tpl.height ?? 5}ft`
+                   : "—";
     const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 57}°` : "—";
     return `
         <tr data-index="${index}">
             <td>${safeName}</td>
             <td>${safeType}</td>
-            <td>${escapeHtml(String(tpl.distance))}ft</td>
+            <td>${tpl.t === "rect" ? "—" : `${escapeHtml(String(tpl.distance))}ft`}</td>
             <td>${widthCell}</td>
             <td>${angleCell}</td>
             <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
@@ -213,7 +231,7 @@ async function openPlaceDialog() {
                 <label>Shape</label>
                 <select class="stp-type-select">${typeOptions}</select>
             </div>
-            <div class="stp-form-row">
+            <div class="stp-form-row stp-distance-row">
                 <label>Size (ft)</label>
                 <input type="number" class="stp-distance-input" value="20" min="5" step="5">
             </div>
@@ -224,6 +242,10 @@ async function openPlaceDialog() {
             <div class="stp-form-row stp-width-row" style="display:none">
                 <label>Width (ft)</label>
                 <input type="number" class="stp-width-input" value="5" min="5" step="5">
+            </div>
+            <div class="stp-form-row stp-height-row" style="display:none">
+                <label>Height (ft)</label>
+                <input type="number" class="stp-height-input" value="20" min="5" step="5">
             </div>
             <div class="stp-form-row">
                 <label>Color</label>
@@ -247,9 +269,10 @@ async function openPlaceDialog() {
                     const t         = $html.find(".stp-type-select").val();
                     const distance  = Math.max(5, parseFloat($html.find(".stp-distance-input").val()) || 20);
                     const angle     = parseFloat($html.find(".stp-angle-input").val()) || 57;
-                    const width     = Math.max(5, parseFloat($html.find(".stp-width-input").val()) || 20);
+                    const width     = Math.max(5, parseFloat($html.find(".stp-width-input").val()) || 5);
+                    const height    = Math.max(5, parseFloat($html.find(".stp-height-input").val()) || 20);
                     const fillColor = $html.find(".stp-color-input").val();
-                    templateConfig  = { t, distance, angle, width, fillColor };
+                    templateConfig  = { t, distance, angle, width, height, fillColor };
                 }
             },
             { action: "cancel", label: "Cancel", default: true }
@@ -259,7 +282,9 @@ async function openPlaceDialog() {
             $html.on("change", ".stp-type-select", (e) => {
                 const type = e.target.value;
                 $html.find(".stp-cone-row").toggle(type === "cone");
-                $html.find(".stp-width-row").toggle(type === "ray");
+                $html.find(".stp-width-row").toggle(type === "ray" || type === "rect");
+                $html.find(".stp-height-row").toggle(type === "rect");
+                $html.find(".stp-distance-row").toggle(type !== "rect");
             });
         }
     });
@@ -316,7 +341,7 @@ async function openConfig(bar, initialTab = "templates") {
                         <label>Shape</label>
                         <select class="stp-new-type">${typeOptions}</select>
                     </div>
-                    <div class="stp-form-row">
+                    <div class="stp-form-row stp-new-distance-row">
                         <label>Size (ft)</label>
                         <input type="number" class="stp-new-distance" value="20" min="5" step="5">
                     </div>
@@ -327,6 +352,10 @@ async function openConfig(bar, initialTab = "templates") {
                     <div class="stp-form-row stp-new-width-row" style="display:none">
                         <label>Width (ft)</label>
                         <input type="number" class="stp-new-width" value="5" min="5" step="5">
+                    </div>
+                    <div class="stp-form-row stp-new-height-row" style="display:none">
+                        <label>Height (ft)</label>
+                        <input type="number" class="stp-new-height" value="20" min="5" step="5">
                     </div>
                     <div class="stp-form-row">
                         <label>Color</label>
@@ -410,11 +439,13 @@ async function openConfig(bar, initialTab = "templates") {
                 if (tabName === "remove") renderRemoveTab();
             });
 
-            // Cone/width row toggle in add form
+            // Cone/width/height row toggle in add form
             $html.on("change", ".stp-new-type", (e) => {
                 const type = e.target.value;
                 $html.find(".stp-new-cone-row").toggle(type === "cone");
                 $html.find(".stp-new-width-row").toggle(type === "rect" || type === "ray");
+                $html.find(".stp-new-height-row").toggle(type === "rect");
+                $html.find(".stp-new-distance-row").toggle(type !== "rect");
             });
 
             // Delete a custom template row
@@ -438,9 +469,10 @@ async function openConfig(bar, initialTab = "templates") {
                 const t         = $html.find(".stp-new-type").val();
                 const distance  = Math.max(5, parseFloat($html.find(".stp-new-distance").val()) || 20);
                 const angle     = parseFloat($html.find(".stp-new-angle").val()) || 57;
-                const width     = Math.max(5, parseFloat($html.find(".stp-new-width").val()) || 20);
+                const width     = Math.max(5, parseFloat($html.find(".stp-new-width").val()) || 5);
+                const height    = Math.max(5, parseFloat($html.find(".stp-new-height").val()) || 20);
                 const fillColor = $html.find(".stp-new-color").val();
-                pendingCustom.push({ name, t, distance, angle, width, fillColor });
+                pendingCustom.push({ name, t, distance, angle, width, height, fillColor });
                 $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
                 $html.find(".stp-new-name").val("").focus();
             });

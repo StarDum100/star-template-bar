@@ -252,14 +252,14 @@ describe("Star Template Placer", () => {
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
-        it("dialog has a shape select with circle, cone, and ray", () => {
+        it("dialog has a shape select with circle, cone, ray, and rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
             const options = [...html.find(".stp-type-select option")].map(o => o.value);
             expect(options).toContain("circle");
             expect(options).toContain("cone");
             expect(options).toContain("ray");
-            expect(options).not.toContain("rect");
+            expect(options).toContain("rect");
         });
 
         it("dialog has a distance input defaulting to 20", () => {
@@ -308,10 +308,61 @@ describe("Star Template Placer", () => {
             expect(html.find(".stp-width-row").css("display")).not.toBe("none");
         });
 
+        it("width row shows when shape is changed to rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            expect(html.find(".stp-width-row").css("display")).not.toBe("none");
+        });
+
+        it("height row is hidden by default", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            expect(html.find(".stp-height-row").css("display")).toBe("none");
+        });
+
+        it("height row shows when shape is changed to rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            expect(html.find(".stp-height-row").css("display")).not.toBe("none");
+        });
+
+        it("height row hides when shape is changed away from rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            html.find(".stp-type-select").val("circle").trigger("change");
+            expect(html.find(".stp-height-row").css("display")).toBe("none");
+        });
+
+        it("size row is hidden when shape is rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            expect(html.find(".stp-distance-row").css("display")).toBe("none");
+        });
+
+        it("size row is visible when shape is changed away from rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            html.find(".stp-type-select").val("circle").trigger("change");
+            expect(html.find(".stp-distance-row").css("display")).not.toBe("none");
+        });
+
         it("width row hides again when shape is changed away from ray", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
             html.find(".stp-type-select").val("ray").trigger("change");
+            html.find(".stp-type-select").val("circle").trigger("change");
+            expect(html.find(".stp-width-row").css("display")).toBe("none");
+        });
+
+        it("width row hides again when shape is changed away from rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
             html.find(".stp-type-select").val("circle").trigger("change");
             expect(html.find(".stp-width-row").css("display")).toBe("none");
         });
@@ -324,6 +375,25 @@ describe("Star Template Placer", () => {
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
                 [expect.objectContaining({ t: "ray", width: 30 })]
+            );
+        });
+
+        it("passes width and height directly for rect and stores dimensions in flags", async () => {
+            await triggerPlaceFromDialog(html => {
+                html.find(".stp-type-select").val("rect").trigger("change");
+                html.find(".stp-width-input").val("30");
+                html.find(".stp-height-input").val("40");
+            });
+            expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                "MeasuredTemplate",
+                [expect.objectContaining({
+                    t: "rect",
+                    width: 30,
+                    distance: 40,
+                    flags: expect.objectContaining({
+                        "star-template-placer": expect.objectContaining({ rectWidth: 30, rectHeight: 40 })
+                    })
+                })]
             );
         });
 
@@ -349,6 +419,23 @@ describe("Star Template Placer", () => {
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
             await new Promise(r => setTimeout(r, 0));
             expect(global.canvas.templates.preview.addChild).toHaveBeenCalled();
+        });
+
+        it("preview document includes width and height directly for rect", async () => {
+            document.querySelector(".stp-place-btn").click();
+            const { options } = openDialogHtml();
+            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+            $(container).find(".stp-type-select").val("rect").trigger("change");
+            $(container).find(".stp-width-input").val("30");
+            $(container).find(".stp-height-input").val("40");
+            global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+            const placeBtn = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
+                expect.objectContaining({ t: "rect", width: 30, distance: 40 }), expect.anything()
+            );
         });
 
         it("preview document includes width for ray", async () => {
@@ -574,8 +661,22 @@ describe("Star Template Placer", () => {
                 expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("15ft");
             });
 
-            it("shows dash for width when template is not a ray", () => {
+            it("shows dash for width when template is not a ray or rect", () => {
                 const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("—");
+            });
+
+            it("shows width × height for rect from flags in the remove tab", () => {
+                const tpl = makeTemplate("t1", "user-001", "rect", 5);
+                tpl.flags = { "star-template-placer": { rectWidth: 30, rectHeight: 40 } };
+                const { html } = openConfigOnRemoveTab([tpl]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("—");
+                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("30ft × 40ft");
+            });
+
+            it("shows dash for rect dimensions when flags are absent", () => {
+                const tpl = makeTemplate("t1", "user-001", "rect", 5);
+                const { html } = openConfigOnRemoveTab([tpl]);
                 expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("—");
             });
 
@@ -963,8 +1064,45 @@ describe("Star Template Placer", () => {
                 expect(html.find(".stp-new-width-row").css("display")).not.toBe("none");
             });
 
+            it("shows width row when type is rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                expect(html.find(".stp-new-width-row").css("display")).not.toBe("none");
+            });
+
+            it("height row is hidden by default", () => {
+                expect(html.find(".stp-new-height-row").css("display")).toBe("none");
+            });
+
+            it("shows height row when type is rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                expect(html.find(".stp-new-height-row").css("display")).not.toBe("none");
+            });
+
+            it("hides height row when type is changed away from rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                html.find(".stp-new-type").val("circle").trigger("change");
+                expect(html.find(".stp-new-height-row").css("display")).toBe("none");
+            });
+
+            it("size row is hidden when type is rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                expect(html.find(".stp-new-distance-row").css("display")).toBe("none");
+            });
+
+            it("size row is visible when type is changed away from rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                html.find(".stp-new-type").val("circle").trigger("change");
+                expect(html.find(".stp-new-distance-row").css("display")).not.toBe("none");
+            });
+
             it("hides width row when type is changed away from ray", () => {
                 html.find(".stp-new-type").val("ray").trigger("change");
+                html.find(".stp-new-type").val("circle").trigger("change");
+                expect(html.find(".stp-new-width-row").css("display")).toBe("none");
+            });
+
+            it("hides width row when type is changed away from rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
                 html.find(".stp-new-type").val("circle").trigger("change");
                 expect(html.find(".stp-new-width-row").css("display")).toBe("none");
             });
@@ -977,6 +1115,16 @@ describe("Star Template Placer", () => {
                 expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
+            it("stores width and height in custom template for rect and shows them in table", () => {
+                html.find(".stp-new-name").val("Wall");
+                html.find(".stp-new-type").val("rect").trigger("change");
+                html.find(".stp-new-width").val("15");
+                html.find(".stp-new-height").val("20");
+                html.find(".stp-add-btn").trigger("click");
+                const cells = html.find("tbody tr[data-index] td");
+                expect(cells.eq(3).text()).toBe("15ft × 20ft");
+            });
+
             it("shows width in feet for ray type", () => {
                 html.find(".stp-new-name").val("Blast");
                 html.find(".stp-new-type").val("ray").trigger("change");
@@ -986,12 +1134,22 @@ describe("Star Template Placer", () => {
                 expect(cells.eq(3).text()).toBe("10ft");
             });
 
-            it("shows dash for width when type is not ray", () => {
+            it("shows dash for width when type is not ray or rect", () => {
                 html.find(".stp-new-name").val("Fireball");
                 html.find(".stp-new-type").val("circle");
                 html.find(".stp-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
                 expect(cells.eq(3).text()).toBe("—");
+            });
+
+            it("shows width × height for rect type", () => {
+                html.find(".stp-new-name").val("Wall");
+                html.find(".stp-new-type").val("rect").trigger("change");
+                html.find(".stp-new-width").val("10");
+                html.find(".stp-new-height").val("30");
+                html.find(".stp-add-btn").trigger("click");
+                const cells = html.find("tbody tr[data-index] td");
+                expect(cells.eq(3).text()).toBe("10ft × 30ft");
             });
 
             it("shows angle in degrees for cone type", () => {
