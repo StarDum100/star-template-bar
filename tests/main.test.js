@@ -146,10 +146,10 @@ function setupBar(flagOverrides = {}) {
 }
 
 function makeTemplate(id, user, t, distance) {
-    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance, x: 100, y: 100 };
+    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance, x: 100, y: 100, hidden: false };
     return {
         id, user, t, distance,
-        x: 100, y: 100,
+        x: 100, y: 100, hidden: false,
         fillColor: "#ff4400", borderColor: "#ff4400",
         toObject: jest.fn().mockReturnValue({ ...originalData }),
         delete:   jest.fn().mockResolvedValue(undefined),
@@ -723,20 +723,20 @@ describe("Star Template Placer", () => {
                 expect(html.find(".stp-move-template-btn")).toHaveLength(2);
             });
 
-            it("calls delete immediately when delete button is clicked", async () => {
+            it("hides the template immediately when delete button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(tpl.delete).toHaveBeenCalled();
+                expect(tpl.update).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
             });
 
-            it("stores the full original data via toObject when delete button is clicked", async () => {
+            it("does not delete the template immediately when delete button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(tpl.toObject).toHaveBeenCalled();
+                expect(tpl.delete).not.toHaveBeenCalled();
             });
 
             async function deleteAndCancel(tpl) {
@@ -744,71 +744,33 @@ describe("Star Template Placer", () => {
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                global.canvas.scene.createEmbeddedDocuments.mockClear();
+                tpl.update.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await new Promise(r => setTimeout(r, 0));
             }
 
-            it("restores rect using flag dimensions (height × SQRT2) on Cancel", async () => {
-                const originalData = {
-                    t: "rect", distance: 999, width: 999, fillColor: "#ff4400",
-                    flags: { "star-template-placer": { width: 30, height: 20 } },
-                };
-                const tpl = {
-                    id: "t1", user: "user-001", t: "rect", distance: 999,
-                    fillColor: "#ff4400",
-                    toObject: jest.fn().mockReturnValue(originalData),
-                    delete: jest.fn().mockResolvedValue(undefined),
-                    update: jest.fn().mockResolvedValue(undefined),
-                };
-                await deleteAndCancel(tpl);
-                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate",
-                    [expect.objectContaining({ distance: 20 * Math.SQRT2, width: 30 })],
-                    { keepId: true }
-                );
-            });
-
-            it("restores ray using flag distance and width on Cancel", async () => {
-                const originalData = {
-                    t: "ray", distance: 999, width: 999, fillColor: "#ff4400",
-                    flags: { "star-template-placer": { distance: 100, width: 5 } },
-                };
-                const tpl = {
-                    id: "t1", user: "user-001", t: "ray", distance: 999,
-                    fillColor: "#ff4400",
-                    toObject: jest.fn().mockReturnValue(originalData),
-                    delete: jest.fn().mockResolvedValue(undefined),
-                    update: jest.fn().mockResolvedValue(undefined),
-                };
-                await deleteAndCancel(tpl);
-                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate",
-                    [expect.objectContaining({ distance: 100, width: 5 })],
-                    { keepId: true }
-                );
-            });
-
-            it("restores non-module templates from toObject data on Cancel", async () => {
+            it("restores original hidden state on Cancel (was visible)", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 await deleteAndCancel(tpl);
-                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate", [tpl.toObject()], { keepId: true }
-                );
+                expect(tpl.update).toHaveBeenCalledWith(expect.objectContaining({ hidden: false }));
             });
 
-            it("does not recreate templates when Save is clicked", async () => {
+            it("restores original hidden state on Cancel (was already hidden)", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.hidden = true;
+                await deleteAndCancel(tpl);
+                expect(tpl.update).toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
+            });
+
+            it("actually deletes the template when Save is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html, options } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                global.canvas.scene.createEmbeddedDocuments.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
-                expect(global.canvas.scene.createEmbeddedDocuments).not.toHaveBeenCalledWith(
-                    "MeasuredTemplate", expect.anything(), expect.anything()
-                );
+                expect(tpl.delete).toHaveBeenCalled();
             });
 
             it("pending-deleted template does not reappear when Move tab is re-entered", async () => {
@@ -847,11 +809,13 @@ describe("Star Template Placer", () => {
             });
 
             it("still removes the row when the template is already gone from the scene", async () => {
-                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html } = openConfigOnMoveTab([tpl]);
                 global.canvas.scene.templates.get.mockReturnValue(undefined);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
+                expect(tpl.update).not.toHaveBeenCalledWith(expect.objectContaining({ hidden: true }));
             });
 
             describe("XSS in template data", () => {

@@ -113,36 +113,29 @@ async function pickNewPosition(templateData) {
         const prevCursor = document.body.style.cursor;
         document.body.style.cursor = "crosshair";
 
-        const { t, fillColor, borderColor } = templateData;
+        const { _id, x: _x, y: _y, user: _user, ...baseData } = templateData;
+        const { t } = baseData;
         const f = templateData.flags?.[MODULE_ID] ?? {};
         const { x: startX, y: startY } = canvas.mousePosition;
 
-        let distance, angle, width, direction;
+        let overrides = {};
         if (f.distance != null || f.width != null || f.height != null) {
             const fd = f.distance ?? 20;
             const fw = f.width    ?? fd;
             const fh = f.height;
-            distance  = t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
-            angle     = f.angle ?? 53.13;
-            width     = Math.max(5, fw ?? fd);
-            direction = t === "rect" ? 45 : 0;
-        } else {
-            distance  = templateData.distance;
-            angle     = templateData.angle;
-            width     = templateData.width;
-            direction = templateData.direction;
+            overrides = {
+                distance:  t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd),
+                angle:     f.angle ?? 53.13,
+                width:     Math.max(5, fw ?? fd),
+                direction: t === "rect" ? 45 : 0,
+            };
         }
 
         const doc = new CONFIG.MeasuredTemplate.documentClass({
-            t,
-            x:          startX,
-            y:          startY,
-            distance,
-            angle,
-            width,
-            direction,
-            fillColor,
-            borderColor: borderColor ?? fillColor,
+            ...baseData,
+            ...overrides,
+            x:    startX,
+            y:    startY,
             user: game.user.id,
         }, { parent: canvas.scene });
 
@@ -572,6 +565,10 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
                     await game.user.setFlag(MODULE_ID, "barGrid", pendingGrid);
+                    for (const id of pendingRemovals) {
+                        const tpl = canvas?.scene?.templates?.get(id);
+                        if (tpl) await tpl.delete();
+                    }
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
@@ -662,15 +659,15 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
             });
 
-            // Move tab: delete a scene template immediately (preview; restored on Cancel)
+            // Move tab: hide template as preview; actually deleted on Save, restored on Cancel
             $html.on("click", ".stp-remove-template-btn", async (e) => {
                 const row = $(e.currentTarget).closest("tr");
                 const id  = row.attr("data-id");
                 pendingRemovals.push(id);
                 const stagedTpl = canvas?.scene?.templates?.get(id);
                 if (stagedTpl) {
-                    pendingRemovalOriginals.set(id, stagedTpl.toObject());
-                    await stagedTpl.delete();
+                    pendingRemovalOriginals.set(id, stagedTpl.hidden ?? false);
+                    await stagedTpl.update({ hidden: true });
                 }
                 row.remove();
                 if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
@@ -784,21 +781,9 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     }
 
     if (!saved) {
-        for (const originalData of pendingRemovalOriginals.values()) {
-            const f = originalData.flags?.[MODULE_ID] ?? {};
-            const t = originalData.t;
-            let createData = originalData;
-            if (f.width != null || f.height != null || f.distance != null) {
-                const effectiveDistance = t === "rect"
-                    ? (f.height ?? f.width) * Math.SQRT2
-                    : (f.distance ?? originalData.distance);
-                createData = {
-                    ...originalData,
-                    distance: Math.max(5, effectiveDistance),
-                    width:    Math.max(5, f.width ?? f.distance ?? originalData.width ?? 5),
-                };
-            }
-            await canvas?.scene?.createEmbeddedDocuments("MeasuredTemplate", [createData], { keepId: true });
+        for (const [id, wasHidden] of pendingRemovalOriginals) {
+            const tpl = canvas?.scene?.templates?.get(id);
+            if (tpl) await tpl.update({ hidden: wasHidden });
         }
         for (const [id, origPos] of pendingMoveOriginals) {
             const tpl = canvas?.scene?.templates?.get(id);
