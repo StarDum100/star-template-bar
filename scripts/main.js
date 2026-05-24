@@ -71,7 +71,6 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
         };
 
         const onPlace = async (e) => {
-            console.log(`[STP] placeTemplate | onPlace fired | e.target:`, e.target, `| canvas.app.view:`, canvas.app.view, `| match:`, e.target === canvas.app.view);
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
@@ -103,7 +102,6 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
             resolve();
         };
 
-        console.log(`[STP] placeTemplate | registering listeners | canvas.app.view:`, canvas.app.view);
         canvas.app.view.addEventListener("pointermove", onMove);
         window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
@@ -164,11 +162,9 @@ async function pickNewPosition(templateData) {
         };
 
         const onPlace = (e) => {
-            console.log(`[STP] pickNewPosition | onPlace fired | e.target:`, e.target, `| canvas.app.view:`, canvas.app.view, `| match:`, e.target === canvas.app.view);
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
-            console.log(`[STP] pickNewPosition | resolved position: { x: ${x}, y: ${y} } (raw: ${rawX}, ${rawY})`);
             resolve({ x, y });
         };
 
@@ -178,7 +174,6 @@ async function pickNewPosition(templateData) {
             resolve(null);
         };
 
-        console.log(`[STP] pickNewPosition | registering listeners | canvas.app.view:`, canvas.app.view);
         canvas.app.view.addEventListener("pointermove", onMove);
         window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
@@ -769,15 +764,21 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     if (moveRequested) {
         const tpl = canvas?.scene?.templates?.get(moveRequested);
         if (tpl) {
-            const origData = pendingMoveOriginals.get(moveRequested) ?? tpl.toObject();
-            const newPos = await pickNewPosition(tpl.toObject());
+            // Whitelist only the fields placeTemplate uses — avoids system hooks that transform distance
+            // when they see extra fields like _stats or texture in toObject() data.
+            const raw = tpl.toObject();
+            const origData = pendingMoveOriginals.get(moveRequested) ?? {
+                t: raw.t, distance: raw.distance, angle: raw.angle, width: raw.width,
+                direction: raw.direction, fillColor: raw.fillColor, borderColor: raw.borderColor,
+                user: raw.user, flags: raw.flags, x: raw.x, y: raw.y,
+            };
+            const newPos = await pickNewPosition(raw);
             if (newPos) {
                 const roundedPos = { x: Math.round(newPos.x), y: Math.round(newPos.y) };
                 await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
                 pendingMoveOriginals.delete(moveRequested);
-                const { _id: _discarded, ...createData } = origData;
                 const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
-                    ...createData,
+                    ...origData,
                     x: roundedPos.x,
                     y: roundedPos.y,
                 }]);
@@ -799,8 +800,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         }
         for (const [newId, origData] of pendingMoveOriginals) {
             await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);
-            const { _id: _discarded, ...createData } = origData;
-            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
+            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
         }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();
