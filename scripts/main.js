@@ -253,7 +253,8 @@ async function openConfig(bar, initialTab = "templates") {
     let saved                = false;
     let pendingResetPosition = false;
     let originalPosition     = null;
-    const pendingRemovals    = [];
+    const pendingRemovals      = [];
+    const pendingRemovalOriginals = new Map();
 
     const typeOptions = TEMPLATE_TYPES.map(t =>
         `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
@@ -346,10 +347,6 @@ async function openConfig(bar, initialTab = "templates") {
                     saved = true;
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
-                    for (const id of pendingRemovals) {
-                        const tpl = canvas?.scene?.templates?.get(id);
-                        if (tpl) await tpl.delete();
-                    }
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
@@ -422,13 +419,16 @@ async function openConfig(bar, initialTab = "templates") {
                 if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
             });
 
-            // Remove tab: stage deletions — executed on Save
-            $html.on("click", ".stp-remove-template-btn", (e) => {
+            // Remove tab: delete immediately for preview; recreated on Cancel
+            $html.on("click", ".stp-remove-template-btn", async (e) => {
                 const row = $(e.currentTarget).closest("tr");
                 const id  = row.attr("data-id");
                 pendingRemovals.push(id);
                 const stagedTpl = canvas?.scene?.templates?.get(id);
-                if (stagedTpl?.object) stagedTpl.object.visible = false;
+                if (stagedTpl) {
+                    pendingRemovalOriginals.set(id, stagedTpl.toObject());
+                    await stagedTpl.delete();
+                }
                 row.remove();
                 if ($html.find('[data-panel="remove"] tbody tr[data-id]').length === 0) {
                     $html.find('[data-panel="remove"]').html('<p class="stp-remove-empty">No templates on the map.</p>');
@@ -458,9 +458,8 @@ async function openConfig(bar, initialTab = "templates") {
     });
 
     if (!saved) {
-        for (const id of pendingRemovals) {
-            const tpl = canvas?.scene?.templates?.get(id);
-            if (tpl?.object) tpl.object.visible = true;
+        for (const originalData of pendingRemovalOriginals.values()) {
+            await canvas?.scene?.createEmbeddedDocuments("MeasuredTemplate", [originalData], { keepId: true });
         }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();

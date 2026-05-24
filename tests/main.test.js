@@ -391,7 +391,13 @@ describe("Star Template Placer", () => {
 
     describe("Remove button", () => {
         function makeTemplate(id, user, t, distance) {
-            return { id, user, t, distance, delete: jest.fn().mockResolvedValue(undefined), object: { visible: true } };
+            const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance };
+            return {
+                id, user, t, distance,
+                fillColor: "#ff4400", borderColor: "#ff4400",
+                toObject: jest.fn().mockReturnValue(originalData),
+                delete: jest.fn().mockResolvedValue(undefined),
+            };
         }
 
         function openConfigOnRemoveTab(templates) {
@@ -509,41 +515,48 @@ describe("Star Template Placer", () => {
                 expect(html.find(".stp-remove-template-btn")).toHaveLength(2);
             });
 
-            it("does not call delete immediately when remove button is clicked", async () => {
+            it("calls delete immediately when remove button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnRemoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(tpl.delete).not.toHaveBeenCalled();
+                expect(tpl.delete).toHaveBeenCalled();
             });
 
-            it("hides the template object on canvas when remove button is clicked", () => {
+            it("stores the full original data via toObject when remove button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnRemoveTab([tpl]);
-                expect(tpl.object.visible).toBe(true);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                expect(tpl.object.visible).toBe(false);
+                await new Promise(r => setTimeout(r, 0));
+                expect(tpl.toObject).toHaveBeenCalled();
             });
 
-            it("restores template object visibility when Cancel is clicked", async () => {
+            it("recreates deleted templates on the scene when Cancel is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnRemoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
-                expect(tpl.object.visible).toBe(false);
+                await new Promise(r => setTimeout(r, 0));
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await new Promise(r => setTimeout(r, 0));
-                expect(tpl.object.visible).toBe(true);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", [tpl.toObject()], { keepId: true }
+                );
             });
 
-            it("calls delete on marked templates when Save is clicked", async () => {
+            it("does not recreate templates when Save is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html, options } = openConfigOnRemoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
-                expect(tpl.delete).toHaveBeenCalled();
+                expect(global.canvas.scene.createEmbeddedDocuments).not.toHaveBeenCalledWith(
+                    "MeasuredTemplate", expect.anything(), expect.anything()
+                );
             });
 
             it("pending-removed template does not reappear when Remove tab is re-entered", async () => {
