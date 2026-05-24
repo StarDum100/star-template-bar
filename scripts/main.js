@@ -16,7 +16,7 @@ function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
 }
 
-async function placeTemplate({ t, distance, angle, fillColor }) {
+async function placeTemplate({ t, distance, angle, fillColor, name }) {
     if (!canvas?.scene) {
         ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
         return;
@@ -72,6 +72,7 @@ async function placeTemplate({ t, distance, angle, fillColor }) {
                 fillColor,
                 borderColor: fillColor,
                 user: game.user.id,
+                ...(name ? { flags: { [MODULE_ID]: { name } } } : {}),
             }]);
             resolve();
         };
@@ -99,12 +100,16 @@ function templateDistanceFt(t) {
 
 function buildRemoveContent(templates) {
     const rows = templates.map(t => {
-        const owner = escapeHtml(templateOwnerName(t));
+        const name      = escapeHtml(String(t.flags?.[MODULE_ID]?.name ?? ""));
+        const owner     = escapeHtml(templateOwnerName(t));
+        const safeColor = escapeHtml(String(t.fillColor ?? "#000000"));
         return `
             <tr data-id="${escapeHtml(t.id)}">
+                <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
                 <td>${templateDistanceFt(t)}ft</td>
+                <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
                 <td class="stp-delete-cell">
                     <button type="button" class="stp-remove-template-btn">&#10005;</button>
                 </td>
@@ -113,7 +118,7 @@ function buildRemoveContent(templates) {
     }).join("");
     return `
         <table class="stp-config-table">
-            <thead><tr><th>Owner</th><th>Shape</th><th>Size</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Color</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
     `;

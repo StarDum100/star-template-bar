@@ -468,34 +468,54 @@ describe("Star Template Placer", () => {
                 expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(2);
             });
 
+            it("shows the template name from flags when present", () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.flags = { "star-template-placer": { name: "Fireball" } };
+                const { html } = openConfigOnRemoveTab([tpl]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Fireball");
+            });
+
+            it("shows empty name when no flag name is set", () => {
+                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("");
+            });
+
             it("shows the owner name via template.author", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 tpl.author = { name: "Gandalf" };
                 const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Gandalf");
+                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("Gandalf");
             });
 
             it("falls back to game.users when author is absent", () => {
                 global.game.users.get.mockReturnValue({ name: "Saruman" });
                 const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Saruman");
+                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("Saruman");
             });
 
             it("shows 'Unknown' when neither author nor game.users resolves", () => {
                 global.game.users.get.mockReturnValue(undefined);
                 const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-999", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Unknown");
+                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("Unknown");
             });
 
             it("shows the template type", () => {
                 const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "cone", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("cone");
+                expect(html.find('[data-panel="remove"] tbody td').eq(2).text()).toBe("cone");
+            });
+
+            it("shows a color swatch with the template fill color", () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html } = openConfigOnRemoveTab([tpl]);
+                const swatch = html.find('[data-panel="remove"] .stp-color-swatch');
+                expect(swatch).toHaveLength(1);
+                expect(swatch.attr("style")).toContain("#ff4400");
             });
 
             it("multiplies distance by grid.distance to display feet", () => {
                 global.canvas.scene.grid.distance = 5;
                 const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(2).text()).toBe("20ft");
+                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("20ft");
             });
 
             it("shows an empty state message when there are no templates", () => {
