@@ -22,7 +22,7 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
         return;
     }
 
-    const effectiveDistance = (t === "rect") ? (height ?? width) : distance;
+    const effectiveDistance = (t === "rect") ? (height ?? width) * Math.SQRT2 : distance;
 
     return new Promise((resolve) => {
         const { x: startX, y: startY } = canvas.mousePosition;

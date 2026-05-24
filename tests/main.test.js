@@ -378,7 +378,7 @@ describe("Star Template Placer", () => {
             );
         });
 
-        it("passes width and height directly for rect and stores dimensions in flags", async () => {
+        it("passes width and height * sqrt(2) for rect distance and stores dimensions in flags", async () => {
             await triggerPlaceFromDialog(html => {
                 html.find(".stp-type-select").val("rect").trigger("change");
                 html.find(".stp-width-input").val("30");
@@ -389,7 +389,7 @@ describe("Star Template Placer", () => {
                 [expect.objectContaining({
                     t: "rect",
                     width: 30,
-                    distance: 40,
+                    distance: 40 * Math.SQRT2,
                     flags: expect.objectContaining({
                         "star-template-placer": expect.objectContaining({ rectWidth: 30, rectHeight: 40 })
                     })
@@ -421,7 +421,7 @@ describe("Star Template Placer", () => {
             expect(global.canvas.templates.preview.addChild).toHaveBeenCalled();
         });
 
-        it("preview document includes width and height directly for rect", async () => {
+        it("preview document includes width and height * sqrt(2) as distance for rect", async () => {
             document.querySelector(".stp-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
@@ -434,7 +434,7 @@ describe("Star Template Placer", () => {
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
             await new Promise(r => setTimeout(r, 0));
             expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
-                expect.objectContaining({ t: "rect", width: 30, distance: 40 }), expect.anything()
+                expect.objectContaining({ t: "rect", width: 30, distance: 40 * Math.SQRT2 }), expect.anything()
             );
         });
 
