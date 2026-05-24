@@ -1121,6 +1121,30 @@ describe("Star Template Placer", () => {
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
+        it("does not open a second dialog when config button is clicked while already open", () => {
+            document.querySelector(".stp-config-btn").click();
+            global.foundry.applications.api.DialogV2.wait.mockClear();
+            document.querySelector(".stp-config-btn").click();
+            expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
+        });
+
+        it("does not open a second dialog when move button is clicked while config is open", () => {
+            global.canvas.scene.templates.contents = [makeTemplate("t1", "user-001", "circle", 4)];
+            document.querySelector(".stp-config-btn").click();
+            global.foundry.applications.api.DialogV2.wait.mockClear();
+            document.querySelector(".stp-move-btn").click();
+            expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
+        });
+
+        it("allows reopening after the dialog is closed", async () => {
+            document.querySelector(".stp-config-btn").click();
+            global.foundry.applications.api.DialogV2.__resolveDialog(null);
+            await new Promise(r => setTimeout(r, 0));
+            global.foundry.applications.api.DialogV2.wait.mockClear();
+            document.querySelector(".stp-config-btn").click();
+            expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
+        });
+
         it("dialog title includes module name and save hint", () => {
             document.querySelector(".stp-config-btn").click();
             const options = global.foundry.applications.api.DialogV2.__lastOptions;

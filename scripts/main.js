@@ -2,6 +2,8 @@
 const MODULE_ID = "star-template-placer";
 const MODULE_TITLE = "Star Template Placer";
 
+let configOpen = false;
+
 function escapeHtml(str) {
     return String(str)
         .replace(/&/g, "&amp;")
@@ -812,6 +814,7 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
+    configOpen = false;
     const bar = $(`<div class="stp-template-bar">
         <div class="stp-bar-controls">
             <span class="stp-bar-handle" title="Drag to move bar">&#8801;</span>
@@ -830,6 +833,7 @@ Hooks.once("ready", () => {
 
     bar.find(".stp-place-btn").on("click",  () => openPlaceDialog());
     bar.find(".stp-move-btn").on("click", () => {
+        if (configOpen) return;
         if (!canvas?.scene) {
             ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
             return;
@@ -838,9 +842,14 @@ Hooks.once("ready", () => {
             ui.notifications.warn(`${MODULE_TITLE}: No templates to move.`);
             return;
         }
-        openConfig(bar, "move");
+        configOpen = true;
+        openConfig(bar, "move").finally(() => { configOpen = false; });
     });
-    bar.find(".stp-config-btn").on("click", () => openConfig(bar));
+    bar.find(".stp-config-btn").on("click", () => {
+        if (configOpen) return;
+        configOpen = true;
+        openConfig(bar).finally(() => { configOpen = false; });
+    });
 });
 
 if (typeof module !== "undefined") module.exports = {};
