@@ -35,7 +35,7 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
             x:         startX,
             y:         startY,
             distance:  Math.max(5, effectiveDistance),
-            angle:     angle ?? 57,
+            angle:     angle ?? 53.13,
             width:     Math.max(5, width ?? distance),
             direction: t === "rect" ? 45 : 0,
             fillColor,
@@ -70,7 +70,7 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
             await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
                 t, x, y,
                 distance:  Math.max(5, effectiveDistance),
-                angle:     angle ?? 57,
+                angle:     angle ?? 53.13,
                 width:     Math.max(5, width ?? distance),
                 direction: t === "rect" ? 45 : 0,
                 fillColor,
@@ -79,7 +79,10 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
                 flags: {
                     [MODULE_ID]: {
                         ...(name ? { name } : {}),
-                        ...(t === "rect" ? { rectWidth: Math.max(5, width), rectHeight: Math.max(5, height ?? width) } : {}),
+                        ...(distance != null ? { distance } : {}),
+                        ...(angle    != null ? { angle }    : {}),
+                        ...(width    != null ? { width }    : {}),
+                        ...(height   != null ? { height }   : {}),
                     }
                 },
             }]);
@@ -110,26 +113,26 @@ function templateDistanceFt(t) {
 function buildRemoveContent(templates) {
     const gridDistance = canvas?.scene?.grid?.distance ?? 1;
     const rows = templates.map(t => {
-        const name      = escapeHtml(String(t.flags?.[MODULE_ID]?.name ?? ""));
+        const f         = t.flags?.[MODULE_ID] ?? {};
+        const name      = escapeHtml(String(f.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
         const safeColor = escapeHtml(String(t.fillColor ?? "#000000"));
         let widthCell;
         if (t.t === "ray") {
-            widthCell = `${Math.round((t.width ?? 0) * gridDistance)}ft`;
+            widthCell = f.width != null ? `${f.width}ft` : `${Math.round((t.width ?? 0) * gridDistance)}ft`;
         } else if (t.t === "rect") {
-            const rw = t.flags?.[MODULE_ID]?.rectWidth;
-            const rh = t.flags?.[MODULE_ID]?.rectHeight;
-            widthCell = (rw != null && rh != null) ? `${rw}ft × ${rh}ft` : "—";
+            widthCell = (f.width != null && f.height != null) ? `${f.width}ft × ${f.height}ft` : "—";
         } else {
             widthCell = "—";
         }
-        const angleCell = t.t === "cone" ? `${t.angle ?? 57}°` : "—";
+        const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}°` : "—";
+        const distCell  = t.t === "rect" ? "—" : (f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`);
         return `
             <tr data-id="${escapeHtml(t.id)}">
                 <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
-                <td>${t.t === "rect" ? "—" : `${templateDistanceFt(t)}ft`}</td>
+                <td>${distCell}</td>
                 <td>${widthCell}</td>
                 <td>${angleCell}</td>
                 <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
@@ -203,7 +206,7 @@ function makeCustomRow(tpl, index) {
     const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft`
                    : tpl.t === "rect" ? `${tpl.width ?? 5}ft × ${tpl.height ?? 5}ft`
                    : "—";
-    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 57}°` : "—";
+    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 53.13}°` : "—";
     return `
         <tr data-index="${index}">
             <td>${safeName}</td>
@@ -237,7 +240,7 @@ async function openPlaceDialog() {
             </div>
             <div class="stp-form-row stp-cone-row" style="display:none">
                 <label>Angle (&deg;)</label>
-                <input type="number" class="stp-angle-input" value="57" min="1" max="360">
+                <input type="number" class="stp-angle-input" value="53.13" min="1" max="360">
             </div>
             <div class="stp-form-row stp-width-row" style="display:none">
                 <label>Width (ft)</label>
@@ -268,7 +271,7 @@ async function openPlaceDialog() {
                     const $html     = $(dialog.element);
                     const t         = $html.find(".stp-type-select").val();
                     const distance  = Math.max(5, parseFloat($html.find(".stp-distance-input").val()) || 20);
-                    const angle     = parseFloat($html.find(".stp-angle-input").val()) || 57;
+                    const angle     = parseFloat($html.find(".stp-angle-input").val()) || 53.13;
                     const width     = Math.max(5, parseFloat($html.find(".stp-width-input").val()) || 5);
                     const height    = Math.max(5, parseFloat($html.find(".stp-height-input").val()) || 20);
                     const fillColor = $html.find(".stp-color-input").val();
@@ -347,7 +350,7 @@ async function openConfig(bar, initialTab = "templates") {
                     </div>
                     <div class="stp-form-row stp-new-cone-row" style="display:none">
                         <label>Angle (&deg;)</label>
-                        <input type="number" class="stp-new-angle" value="57" min="1" max="360">
+                        <input type="number" class="stp-new-angle" value="53.13" min="1" max="360">
                     </div>
                     <div class="stp-form-row stp-new-width-row" style="display:none">
                         <label>Width (ft)</label>
@@ -468,7 +471,7 @@ async function openConfig(bar, initialTab = "templates") {
                 }
                 const t         = $html.find(".stp-new-type").val();
                 const distance  = Math.max(5, parseFloat($html.find(".stp-new-distance").val()) || 20);
-                const angle     = parseFloat($html.find(".stp-new-angle").val()) || 57;
+                const angle     = parseFloat($html.find(".stp-new-angle").val()) || 53.13;
                 const width     = Math.max(5, parseFloat($html.find(".stp-new-width").val()) || 5);
                 const height    = Math.max(5, parseFloat($html.find(".stp-new-height").val()) || 20);
                 const fillColor = $html.find(".stp-new-color").val();

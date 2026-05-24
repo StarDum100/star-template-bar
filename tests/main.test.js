@@ -391,7 +391,7 @@ describe("Star Template Placer", () => {
                     width: 30,
                     distance: 40 * Math.SQRT2,
                     flags: expect.objectContaining({
-                        "star-template-placer": expect.objectContaining({ rectWidth: 30, rectHeight: 40 })
+                        "star-template-placer": expect.objectContaining({ width: 30, height: 40 })
                     })
                 })]
             );
@@ -668,7 +668,7 @@ describe("Star Template Placer", () => {
 
             it("shows width × height for rect from flags in the remove tab", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
-                tpl.flags = { "star-template-placer": { rectWidth: 30, rectHeight: 40 } };
+                tpl.flags = { "star-template-placer": { width: 30, height: 40 } };
                 const { html } = openConfigOnRemoveTab([tpl]);
                 expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("—");
                 expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("30ft × 40ft");
