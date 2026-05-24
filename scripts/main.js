@@ -58,7 +58,7 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
             canvas.templates.preview.removeChild(template);
             template.destroy?.({ children: true });
             canvas.app.view.removeEventListener("pointermove", onMove);
-            canvas.app.view.removeEventListener("pointerdown", onPlace);
+            window.removeEventListener("pointerdown", onPlace, { capture: true });
             window.removeEventListener("keydown", onCancel);
             document.body.style.cursor = prevCursor;
         };
@@ -70,7 +70,8 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
             template.refresh?.();
         };
 
-        const onPlace = async () => {
+        const onPlace = async (e) => {
+            console.log(`[STP] placeTemplate | onPlace fired | e.target:`, e.target, `| canvas.app.view:`, canvas.app.view, `| match:`, e.target === canvas.app.view);
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
@@ -102,8 +103,9 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
             resolve();
         };
 
+        console.log(`[STP] placeTemplate | registering listeners | canvas.app.view:`, canvas.app.view);
         canvas.app.view.addEventListener("pointermove", onMove);
-        canvas.app.view.addEventListener("pointerdown", onPlace);
+        window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
     });
 }
@@ -149,7 +151,7 @@ async function pickNewPosition(templateData) {
             canvas.templates.preview.removeChild(template);
             template.destroy?.({ children: true });
             canvas.app.view.removeEventListener("pointermove", onMove);
-            canvas.app.view.removeEventListener("pointerdown", onPlace);
+            window.removeEventListener("pointerdown", onPlace, { capture: true });
             window.removeEventListener("keydown", onCancel);
             document.body.style.cursor = prevCursor;
         };
@@ -161,10 +163,12 @@ async function pickNewPosition(templateData) {
             template.refresh?.();
         };
 
-        const onPlace = () => {
+        const onPlace = (e) => {
+            console.log(`[STP] pickNewPosition | onPlace fired | e.target:`, e.target, `| canvas.app.view:`, canvas.app.view, `| match:`, e.target === canvas.app.view);
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
+            console.log(`[STP] pickNewPosition | resolved position: { x: ${x}, y: ${y} } (raw: ${rawX}, ${rawY})`);
             resolve({ x, y });
         };
 
@@ -174,8 +178,9 @@ async function pickNewPosition(templateData) {
             resolve(null);
         };
 
+        console.log(`[STP] pickNewPosition | registering listeners | canvas.app.view:`, canvas.app.view);
         canvas.app.view.addEventListener("pointermove", onMove);
-        canvas.app.view.addEventListener("pointerdown", onPlace);
+        window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
     });
 }
@@ -567,9 +572,8 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
                     await game.user.setFlag(MODULE_ID, "barGrid", pendingGrid);
-                    for (const id of pendingRemovals) {
-                        const tpl = canvas?.scene?.templates?.get(id);
-                        if (tpl) await tpl.delete();
+                    if (pendingRemovals.length) {
+                        await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", pendingRemovals);
                     }
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
@@ -669,7 +673,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 const stagedTpl = canvas?.scene?.templates?.get(id);
                 if (stagedTpl) {
                     pendingRemovalOriginals.set(id, stagedTpl.hidden ?? false);
-                    await stagedTpl.update({ hidden: true });
+                    await canvas.scene.updateEmbeddedDocuments("MeasuredTemplate", [{ _id: id, hidden: true }]);
                 }
                 row.remove();
                 if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
@@ -765,14 +769,21 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     if (moveRequested) {
         const tpl = canvas?.scene?.templates?.get(moveRequested);
         if (tpl) {
-            const origX = tpl.x;
-            const origY = tpl.y;
+            const origData = pendingMoveOriginals.get(moveRequested) ?? tpl.toObject();
             const newPos = await pickNewPosition(tpl.toObject());
             if (newPos) {
-                if (!pendingMoveOriginals.has(moveRequested)) {
-                    pendingMoveOriginals.set(moveRequested, { x: origX, y: origY });
+                const roundedPos = { x: Math.round(newPos.x), y: Math.round(newPos.y) };
+                await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
+                pendingMoveOriginals.delete(moveRequested);
+                const { _id: _discarded, ...createData } = origData;
+                const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
+                    ...createData,
+                    x: roundedPos.x,
+                    y: roundedPos.y,
+                }]);
+                if (newDoc?.id) {
+                    pendingMoveOriginals.set(newDoc.id, origData);
                 }
-                await tpl.update(newPos);
             }
         }
         await openConfig(bar, "move", {
@@ -784,12 +795,12 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
 
     if (!saved) {
         for (const [id, wasHidden] of pendingRemovalOriginals) {
-            const tpl = canvas?.scene?.templates?.get(id);
-            if (tpl) await tpl.update({ hidden: wasHidden });
+            await canvas.scene.updateEmbeddedDocuments("MeasuredTemplate", [{ _id: id, hidden: wasHidden }]);
         }
-        for (const [id, origPos] of pendingMoveOriginals) {
-            const tpl = canvas?.scene?.templates?.get(id);
-            if (tpl) await tpl.update(origPos);
+        for (const [newId, origData] of pendingMoveOriginals) {
+            await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);
+            const { _id: _discarded, ...createData } = origData;
+            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
         }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();
