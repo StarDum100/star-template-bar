@@ -16,7 +16,7 @@ function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
 }
 
-async function placeTemplate({ t, distance, angle, fillColor, name }) {
+async function placeTemplate({ t, distance, angle, width, fillColor, name }) {
     if (!canvas?.scene) {
         ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
         return;
@@ -34,6 +34,7 @@ async function placeTemplate({ t, distance, angle, fillColor, name }) {
             y:         startY,
             distance:  Math.max(5, distance),
             angle:     angle ?? 57,
+            width:     Math.max(5, width ?? distance),
             direction: 0,
             fillColor,
             borderColor: fillColor,
@@ -68,6 +69,7 @@ async function placeTemplate({ t, distance, angle, fillColor, name }) {
                 t, x, y,
                 distance:  Math.max(5, distance),
                 angle:     angle ?? 57,
+                width:     Math.max(5, width ?? distance),
                 direction: 0,
                 fillColor,
                 borderColor: fillColor,
@@ -210,6 +212,10 @@ async function openPlaceDialog() {
                 <label>Angle (&deg;)</label>
                 <input type="number" class="stp-angle-input" value="57" min="1" max="360">
             </div>
+            <div class="stp-form-row stp-width-row" style="display:none">
+                <label>Width (ft)</label>
+                <input type="number" class="stp-width-input" value="20" min="5" step="5">
+            </div>
             <div class="stp-form-row">
                 <label>Color</label>
                 <input type="color" class="stp-color-input" value="${escapeHtml(defaultColor)}">
@@ -232,8 +238,9 @@ async function openPlaceDialog() {
                     const t         = $html.find(".stp-type-select").val();
                     const distance  = Math.max(5, parseFloat($html.find(".stp-distance-input").val()) || 20);
                     const angle     = parseFloat($html.find(".stp-angle-input").val()) || 57;
+                    const width     = Math.max(5, parseFloat($html.find(".stp-width-input").val()) || 20);
                     const fillColor = $html.find(".stp-color-input").val();
-                    templateConfig  = { t, distance, angle, fillColor };
+                    templateConfig  = { t, distance, angle, width, fillColor };
                 }
             },
             { action: "cancel", label: "Cancel", default: true }
@@ -241,7 +248,9 @@ async function openPlaceDialog() {
         render: (event, dialog) => {
             const $html = $(dialog.element);
             $html.on("change", ".stp-type-select", (e) => {
-                $html.find(".stp-cone-row").toggle(e.target.value === "cone");
+                const type = e.target.value;
+                $html.find(".stp-cone-row").toggle(type === "cone");
+                $html.find(".stp-width-row").toggle(type === "rect" || type === "ray");
             });
         }
     });
@@ -305,6 +314,10 @@ async function openConfig(bar, initialTab = "templates") {
                     <div class="stp-form-row stp-new-cone-row" style="display:none">
                         <label>Angle (&deg;)</label>
                         <input type="number" class="stp-new-angle" value="57" min="1" max="360">
+                    </div>
+                    <div class="stp-form-row stp-new-width-row" style="display:none">
+                        <label>Width (ft)</label>
+                        <input type="number" class="stp-new-width" value="20" min="5" step="5">
                     </div>
                     <div class="stp-form-row">
                         <label>Color</label>
@@ -388,9 +401,11 @@ async function openConfig(bar, initialTab = "templates") {
                 if (tabName === "remove") renderRemoveTab();
             });
 
-            // Cone angle row toggle in add form
+            // Cone/width row toggle in add form
             $html.on("change", ".stp-new-type", (e) => {
-                $html.find(".stp-new-cone-row").toggle(e.target.value === "cone");
+                const type = e.target.value;
+                $html.find(".stp-new-cone-row").toggle(type === "cone");
+                $html.find(".stp-new-width-row").toggle(type === "rect" || type === "ray");
             });
 
             // Delete a custom template row
@@ -414,8 +429,9 @@ async function openConfig(bar, initialTab = "templates") {
                 const t         = $html.find(".stp-new-type").val();
                 const distance  = Math.max(5, parseFloat($html.find(".stp-new-distance").val()) || 20);
                 const angle     = parseFloat($html.find(".stp-new-angle").val()) || 57;
+                const width     = Math.max(5, parseFloat($html.find(".stp-new-width").val()) || 20);
                 const fillColor = $html.find(".stp-new-color").val();
-                pendingCustom.push({ name, t, distance, angle, fillColor });
+                pendingCustom.push({ name, t, distance, angle, width, fillColor });
                 $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
                 $html.find(".stp-new-name").val("").focus();
             });

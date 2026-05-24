@@ -295,6 +295,45 @@ describe("Star Template Placer", () => {
             expect(html.find(".stp-cone-row").css("display")).toBe("none");
         });
 
+        it("width row is hidden by default", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            expect(html.find(".stp-width-row").css("display")).toBe("none");
+        });
+
+        it("width row shows when shape is changed to rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            expect(html.find(".stp-width-row").css("display")).not.toBe("none");
+        });
+
+        it("width row shows when shape is changed to ray", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("ray").trigger("change");
+            expect(html.find(".stp-width-row").css("display")).not.toBe("none");
+        });
+
+        it("width row hides again when shape is changed away from rect", () => {
+            document.querySelector(".stp-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stp-type-select").val("rect").trigger("change");
+            html.find(".stp-type-select").val("circle").trigger("change");
+            expect(html.find(".stp-width-row").css("display")).toBe("none");
+        });
+
+        it("passes width to createEmbeddedDocuments for rect", async () => {
+            await triggerPlaceFromDialog(html => {
+                html.find(".stp-type-select").val("rect").trigger("change");
+                html.find(".stp-width-input").val("30");
+            });
+            expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                "MeasuredTemplate",
+                [expect.objectContaining({ t: "rect", width: 30 })]
+            );
+        });
+
         it("Place button registers a canvas click listener for placement", async () => {
             document.querySelector(".stp-place-btn").click();
             const { options } = openDialogHtml();
@@ -317,6 +356,38 @@ describe("Star Template Placer", () => {
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
             await new Promise(r => setTimeout(r, 0));
             expect(global.canvas.templates.preview.addChild).toHaveBeenCalled();
+        });
+
+        it("preview document includes width for rect", async () => {
+            document.querySelector(".stp-place-btn").click();
+            const { options } = openDialogHtml();
+            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+            $(container).find(".stp-type-select").val("rect").trigger("change");
+            $(container).find(".stp-width-input").val("30");
+            global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+            const placeBtn = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
+                expect.objectContaining({ t: "rect", width: 30 }), expect.anything()
+            );
+        });
+
+        it("preview document includes width for ray", async () => {
+            document.querySelector(".stp-place-btn").click();
+            const { options } = openDialogHtml();
+            const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+            $(container).find(".stp-type-select").val("ray").trigger("change");
+            $(container).find(".stp-width-input").val("10");
+            global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+            const placeBtn = options.buttons.find(b => b.action === "place");
+            placeBtn.callback(null, null, { element: container });
+            global.foundry.applications.api.DialogV2.__resolveDialog("place");
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
+                expect.objectContaining({ t: "ray", width: 10 }), expect.anything()
+            );
         });
 
         it("removes the preview object after the canvas is clicked", async () => {
@@ -879,6 +950,34 @@ describe("Star Template Placer", () => {
                 html.find(".stp-new-type").val("cone").trigger("change");
                 html.find(".stp-new-type").val("rect").trigger("change");
                 expect(html.find(".stp-new-cone-row").css("display")).toBe("none");
+            });
+
+            it("width row is hidden by default", () => {
+                expect(html.find(".stp-new-width-row").css("display")).toBe("none");
+            });
+
+            it("shows width row when type is rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                expect(html.find(".stp-new-width-row").css("display")).not.toBe("none");
+            });
+
+            it("shows width row when type is ray", () => {
+                html.find(".stp-new-type").val("ray").trigger("change");
+                expect(html.find(".stp-new-width-row").css("display")).not.toBe("none");
+            });
+
+            it("hides width row when type is changed away from rect", () => {
+                html.find(".stp-new-type").val("rect").trigger("change");
+                html.find(".stp-new-type").val("circle").trigger("change");
+                expect(html.find(".stp-new-width-row").css("display")).toBe("none");
+            });
+
+            it("stores width in custom template for rect", () => {
+                html.find(".stp-new-name").val("Wall");
+                html.find(".stp-new-type").val("rect").trigger("change");
+                html.find(".stp-new-width").val("15");
+                html.find(".stp-add-btn").trigger("click");
+                expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
             it("Enter in name field triggers add", () => {
