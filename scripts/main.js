@@ -524,7 +524,20 @@ async function openConfig(bar, initialTab = "templates") {
 
     if (!saved) {
         for (const originalData of pendingRemovalOriginals.values()) {
-            await canvas?.scene?.createEmbeddedDocuments("MeasuredTemplate", [originalData], { keepId: true });
+            const f = originalData.flags?.[MODULE_ID] ?? {};
+            const t = originalData.t;
+            let createData = originalData;
+            if (f.width != null || f.height != null || f.distance != null) {
+                const effectiveDistance = t === "rect"
+                    ? (f.height ?? f.width) * Math.SQRT2
+                    : (f.distance ?? originalData.distance);
+                createData = {
+                    ...originalData,
+                    distance: Math.max(5, effectiveDistance),
+                    width:    Math.max(5, f.width ?? f.distance ?? originalData.width ?? 5),
+                };
+            }
+            await canvas?.scene?.createEmbeddedDocuments("MeasuredTemplate", [createData], { keepId: true });
         }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();

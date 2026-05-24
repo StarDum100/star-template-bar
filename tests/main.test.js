@@ -726,8 +726,7 @@ describe("Star Template Placer", () => {
                 expect(tpl.toObject).toHaveBeenCalled();
             });
 
-            it("recreates deleted templates on the scene when Cancel is clicked", async () => {
-                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+            async function removeAndCancel(tpl) {
                 openConfigOnRemoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
@@ -735,6 +734,49 @@ describe("Star Template Placer", () => {
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await new Promise(r => setTimeout(r, 0));
+            }
+
+            it("restores rect using flag dimensions (height × SQRT2) on Cancel", async () => {
+                const originalData = {
+                    t: "rect", distance: 999, width: 999, fillColor: "#ff4400",
+                    flags: { "star-template-placer": { width: 30, height: 20 } },
+                };
+                const tpl = {
+                    id: "t1", user: "user-001", t: "rect", distance: 999,
+                    fillColor: "#ff4400",
+                    toObject: jest.fn().mockReturnValue(originalData),
+                    delete: jest.fn().mockResolvedValue(undefined),
+                };
+                await removeAndCancel(tpl);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({ distance: 20 * Math.SQRT2, width: 30 })],
+                    { keepId: true }
+                );
+            });
+
+            it("restores ray using flag distance and width on Cancel", async () => {
+                const originalData = {
+                    t: "ray", distance: 999, width: 999, fillColor: "#ff4400",
+                    flags: { "star-template-placer": { distance: 100, width: 5 } },
+                };
+                const tpl = {
+                    id: "t1", user: "user-001", t: "ray", distance: 999,
+                    fillColor: "#ff4400",
+                    toObject: jest.fn().mockReturnValue(originalData),
+                    delete: jest.fn().mockResolvedValue(undefined),
+                };
+                await removeAndCancel(tpl);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({ distance: 100, width: 5 })],
+                    { keepId: true }
+                );
+            });
+
+            it("restores non-module templates from toObject data on Cancel", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                await removeAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", [tpl.toObject()], { keepId: true }
                 );
