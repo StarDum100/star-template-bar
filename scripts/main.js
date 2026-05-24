@@ -10,7 +10,7 @@ function escapeHtml(str) {
         .replace(/"/g, "&quot;");
 }
 
-const TEMPLATE_TYPES = ["circle", "cone", "rect", "ray"];
+const TEMPLATE_TYPES = ["circle", "cone", "ray"];
 
 function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
@@ -101,16 +101,21 @@ function templateDistanceFt(t) {
 }
 
 function buildRemoveContent(templates) {
+    const gridDistance = canvas?.scene?.grid?.distance ?? 1;
     const rows = templates.map(t => {
         const name      = escapeHtml(String(t.flags?.[MODULE_ID]?.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
         const safeColor = escapeHtml(String(t.fillColor ?? "#000000"));
+        const widthCell = t.t === "ray"  ? `${Math.round((t.width ?? 0) * gridDistance)}ft` : "—";
+        const angleCell = t.t === "cone" ? `${t.angle ?? 57}°` : "—";
         return `
             <tr data-id="${escapeHtml(t.id)}">
                 <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
                 <td>${templateDistanceFt(t)}ft</td>
+                <td>${widthCell}</td>
+                <td>${angleCell}</td>
                 <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
                 <td class="stp-delete-cell">
                     <button type="button" class="stp-remove-template-btn">&#10005;</button>
@@ -120,7 +125,7 @@ function buildRemoveContent(templates) {
     }).join("");
     return `
         <table class="stp-config-table">
-            <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Color</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Width</th><th>Angle</th><th>Color</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
     `;
@@ -214,7 +219,7 @@ async function openPlaceDialog() {
             </div>
             <div class="stp-form-row stp-width-row" style="display:none">
                 <label>Width (ft)</label>
-                <input type="number" class="stp-width-input" value="20" min="5" step="5">
+                <input type="number" class="stp-width-input" value="5" min="5" step="5">
             </div>
             <div class="stp-form-row">
                 <label>Color</label>
@@ -250,7 +255,7 @@ async function openPlaceDialog() {
             $html.on("change", ".stp-type-select", (e) => {
                 const type = e.target.value;
                 $html.find(".stp-cone-row").toggle(type === "cone");
-                $html.find(".stp-width-row").toggle(type === "rect" || type === "ray");
+                $html.find(".stp-width-row").toggle(type === "ray");
             });
         }
     });
@@ -317,7 +322,7 @@ async function openConfig(bar, initialTab = "templates") {
                     </div>
                     <div class="stp-form-row stp-new-width-row" style="display:none">
                         <label>Width (ft)</label>
-                        <input type="number" class="stp-new-width" value="20" min="5" step="5">
+                        <input type="number" class="stp-new-width" value="5" min="5" step="5">
                     </div>
                     <div class="stp-form-row">
                         <label>Color</label>
