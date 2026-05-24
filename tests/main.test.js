@@ -653,43 +653,44 @@ describe("Star Template Placer", () => {
                 expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("20ft");
             });
 
-            it("shows width in feet for ray templates", () => {
+            it("shows distance × width for ray templates from template data", () => {
                 global.canvas.scene.grid.distance = 5;
                 const tpl = makeTemplate("t1", "user-001", "ray", 4);
                 tpl.width = 3;
                 const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("15ft");
+                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("20ft × 15ft");
             });
 
-            it("shows dash for width when template is not a ray or rect", () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("—");
+            it("shows distance × width for ray templates from flags", () => {
+                const tpl = makeTemplate("t1", "user-001", "ray", 4);
+                tpl.flags = { "star-template-placer": { distance: 100, width: 5 } };
+                const { html } = openConfigOnRemoveTab([tpl]);
+                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("100ft × 5ft");
             });
 
             it("shows width × height for rect from flags in the remove tab", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
                 tpl.flags = { "star-template-placer": { width: 30, height: 40 } };
                 const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("—");
-                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("30ft × 40ft");
+                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("30ft × 40ft");
             });
 
             it("shows dash for rect dimensions when flags are absent", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
                 const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("—");
+                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("—");
             });
 
             it("shows angle in degrees for cone templates", () => {
                 const tpl = makeTemplate("t1", "user-001", "cone", 4);
                 tpl.angle = 90;
                 const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(5).text()).toBe("90°");
+                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("90°");
             });
 
             it("shows dash for angle when template is not a cone", () => {
                 const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(5).text()).toBe("—");
+                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("—");
             });
 
             it("shows an empty state message when there are no templates", () => {

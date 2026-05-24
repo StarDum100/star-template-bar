@@ -117,23 +117,23 @@ function buildRemoveContent(templates) {
         const name      = escapeHtml(String(f.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
         const safeColor = escapeHtml(String(t.fillColor ?? "#000000"));
-        let widthCell;
-        if (t.t === "ray") {
-            widthCell = f.width != null ? `${f.width}ft` : `${Math.round((t.width ?? 0) * gridDistance)}ft`;
-        } else if (t.t === "rect") {
-            widthCell = (f.width != null && f.height != null) ? `${f.width}ft × ${f.height}ft` : "—";
-        } else {
-            widthCell = "—";
-        }
         const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}°` : "—";
-        const distCell  = t.t === "rect" ? "—" : (f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`);
+        let distCell;
+        if (t.t === "rect") {
+            distCell = (f.width != null && f.height != null) ? `${f.width}ft × ${f.height}ft` : "—";
+        } else if (t.t === "ray") {
+            const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
+            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) * gridDistance)}`;
+            distCell = `${rayDist}ft × ${rayWidth}ft`;
+        } else {
+            distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
+        }
         return `
             <tr data-id="${escapeHtml(t.id)}">
                 <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
                 <td>${distCell}</td>
-                <td>${widthCell}</td>
                 <td>${angleCell}</td>
                 <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
                 <td class="stp-delete-cell">
@@ -144,7 +144,7 @@ function buildRemoveContent(templates) {
     }).join("");
     return `
         <table class="stp-config-table">
-            <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Width</th><th>Angle</th><th>Color</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Angle</th><th>Color</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
     `;
