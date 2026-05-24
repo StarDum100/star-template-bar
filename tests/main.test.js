@@ -391,7 +391,7 @@ describe("Star Template Placer", () => {
 
     describe("Remove button", () => {
         function makeTemplate(id, user, t, distance) {
-            return { id, user, t, distance, delete: jest.fn().mockResolvedValue(undefined) };
+            return { id, user, t, distance, delete: jest.fn().mockResolvedValue(undefined), object: { visible: true } };
         }
 
         function openConfigOnRemoveTab(templates) {
@@ -515,6 +515,25 @@ describe("Star Template Placer", () => {
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
                 expect(tpl.delete).not.toHaveBeenCalled();
+            });
+
+            it("hides the template object on canvas when remove button is clicked", () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html } = openConfigOnRemoveTab([tpl]);
+                expect(tpl.object.visible).toBe(true);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                expect(tpl.object.visible).toBe(false);
+            });
+
+            it("restores template object visibility when Cancel is clicked", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnRemoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
+                expect(tpl.object.visible).toBe(false);
+                global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                await new Promise(r => setTimeout(r, 0));
+                expect(tpl.object.visible).toBe(true);
             });
 
             it("calls delete on marked templates when Save is clicked", async () => {
@@ -700,7 +719,7 @@ describe("Star Template Placer", () => {
             document.querySelector(".stp-config-btn").click();
             const options = global.foundry.applications.api.DialogV2.__lastOptions;
             expect(options.window.title).toContain("Star Template Placer");
-            expect(options.window.title).toContain("Save to persist changes");
+            expect(options.window.title).toContain("save to persist changes");
         });
 
         describe("tab navigation", () => {

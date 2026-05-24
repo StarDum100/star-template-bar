@@ -427,6 +427,8 @@ async function openConfig(bar, initialTab = "templates") {
                 const row = $(e.currentTarget).closest("tr");
                 const id  = row.attr("data-id");
                 pendingRemovals.push(id);
+                const stagedTpl = canvas?.scene?.templates?.get(id);
+                if (stagedTpl?.object) stagedTpl.object.visible = false;
                 row.remove();
                 if ($html.find('[data-panel="remove"] tbody tr[data-id]').length === 0) {
                     $html.find('[data-panel="remove"]').html('<p class="stp-remove-empty">No templates on the map.</p>');
@@ -456,6 +458,10 @@ async function openConfig(bar, initialTab = "templates") {
     });
 
     if (!saved) {
+        for (const id of pendingRemovals) {
+            const tpl = canvas?.scene?.templates?.get(id);
+            if (tpl?.object) tpl.object.visible = true;
+        }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();
         else           bar.show();
