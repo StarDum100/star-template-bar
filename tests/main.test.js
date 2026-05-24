@@ -977,6 +977,40 @@ describe("Star Template Placer", () => {
                 expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
+            it("shows width in feet for ray type", () => {
+                html.find(".stp-new-name").val("Blast");
+                html.find(".stp-new-type").val("ray").trigger("change");
+                html.find(".stp-new-width").val("10");
+                html.find(".stp-add-btn").trigger("click");
+                const cells = html.find("tbody tr[data-index] td");
+                expect(cells.eq(3).text()).toBe("10ft");
+            });
+
+            it("shows dash for width when type is not ray", () => {
+                html.find(".stp-new-name").val("Fireball");
+                html.find(".stp-new-type").val("circle");
+                html.find(".stp-add-btn").trigger("click");
+                const cells = html.find("tbody tr[data-index] td");
+                expect(cells.eq(3).text()).toBe("—");
+            });
+
+            it("shows angle in degrees for cone type", () => {
+                html.find(".stp-new-name").val("Breathe");
+                html.find(".stp-new-type").val("cone").trigger("change");
+                html.find(".stp-new-angle").val("90");
+                html.find(".stp-add-btn").trigger("click");
+                const cells = html.find("tbody tr[data-index] td");
+                expect(cells.eq(4).text()).toBe("90°");
+            });
+
+            it("shows dash for angle when type is not cone", () => {
+                html.find(".stp-new-name").val("Fireball");
+                html.find(".stp-new-type").val("circle");
+                html.find(".stp-add-btn").trigger("click");
+                const cells = html.find("tbody tr[data-index] td");
+                expect(cells.eq(4).text()).toBe("—");
+            });
+
             it("Enter in name field triggers add", () => {
                 html.find(".stp-new-name").val("Quick");
                 html.find(".stp-new-name").trigger({ type: "keydown", key: "Enter" });

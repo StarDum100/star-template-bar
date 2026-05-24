@@ -184,11 +184,15 @@ function makeCustomRow(tpl, index) {
     const safeName  = escapeHtml(tpl.name);
     const safeType  = escapeHtml(tpl.t);
     const safeColor = escapeHtml(tpl.fillColor);
+    const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft` : "—";
+    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 57}°` : "—";
     return `
         <tr data-index="${index}">
             <td>${safeName}</td>
             <td>${safeType}</td>
             <td>${escapeHtml(String(tpl.distance))}ft</td>
+            <td>${widthCell}</td>
+            <td>${angleCell}</td>
             <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
             <td class="stp-delete-cell"><button type="button" class="stp-delete-btn">&#10005;</button></td>
         </tr>
@@ -283,7 +287,7 @@ async function openConfig(bar, initialTab = "templates") {
     const panel = (name) => `stp-tab-panel${name === initialTab ? "" : " stp-tab-panel-hidden"}`;
 
     const renderTemplatesBody = () => pendingCustom.length === 0
-        ? '<tr class="stp-no-custom-row"><td colspan="5">No custom templates saved.</td></tr>'
+        ? '<tr class="stp-no-custom-row"><td colspan="7">No custom templates saved.</td></tr>'
         : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
 
     const content = `
@@ -296,7 +300,7 @@ async function openConfig(bar, initialTab = "templates") {
         <div class="${panel("templates")}" data-panel="templates">
             <table class="stp-config-table">
                 <thead>
-                    <tr><th>Name</th><th>Shape</th><th>Size</th><th>Color</th><th></th></tr>
+                    <tr><th>Name</th><th>Shape</th><th>Size</th><th>Width</th><th>Angle</th><th>Color</th><th></th></tr>
                 </thead>
                 <tbody>
                     ${renderTemplatesBody()}
