@@ -5,7 +5,7 @@
     z-index: 70;
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     gap: 4px;
     padding: 4px;
     background: rgba(0,0,0,0.5);
@@ -34,6 +34,7 @@
     padding: 0 2px;
     user-select: none;
     line-height: 1;
+    margin-top: 3px;
 }
 
 .stp-bar-handle:hover  { color: #aaa; }
@@ -48,6 +49,44 @@
 
 .stp-custom-btn {
     border-left-width: 3px !important;
+}
+
+/* Single-row: controls wrapper is transparent so its children participate
+   directly in the bar's flex layout, ordered handle | place | move | customs | config */
+.stp-bar-controls { display: contents; }
+.stp-bar-handle   { order: 1; }
+.stp-place-btn    { order: 2; }
+.stp-move-btn     { order: 3; }
+.stp-custom-grid  { order: 4; }
+.stp-config-btn   { order: 5; }
+
+/* Multi-row: controls become a stacked column pinned to the top-left */
+.stp-template-bar.stp-bar-multirow .stp-bar-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    order: 0;
+}
+
+.stp-custom-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stp-bar-row {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Multi-row: buttons fill available width in equal columns */
+.stp-template-bar.stp-bar-multirow .stp-bar-row {
+    display: grid;
+    grid-template-columns: repeat(var(--stp-cols), minmax(0, 1fr));
+    gap: 4px;
 }
 
 /* ── Config dialog tabs ──────────────────────────────────────────────────── */
@@ -93,9 +132,11 @@
     text-align: left;
 }
 
-.stp-delete-cell {
+.stp-delete-cell,
+.stp-action-cell {
     text-align: center;
-    width: 32px;
+    width: 56px;
+    white-space: nowrap;
 }
 
 .stp-delete-btn {
@@ -199,6 +240,125 @@
     flex-direction: column;
     gap: 8px;
     padding: 4px 0;
+}
+
+/* ── Layout tab ──────────────────────────────────────────────────────────── */
+
+.stp-layout-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 0;
+}
+
+.stp-layout-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.stp-layout-tile {
+    background: #2c2c2c;
+    border: 2px solid #555;
+    border-radius: 4px;
+    color: white;
+    cursor: grab;
+    min-width: 40px;
+    padding: 6px 10px;
+    text-align: center;
+    user-select: none;
+}
+
+.stp-layout-tile:active  { cursor: grabbing; }
+.stp-layout-tile.stp-dragging { opacity: 0.4; }
+
+.stp-layout-slot {
+    background: transparent;
+    border: 2px dashed #444;
+    border-radius: 4px;
+    min-width: 40px;
+    padding: 6px 10px;
+    opacity: 0.45;
+}
+
+.stp-layout-tile.stp-slot-over,
+.stp-layout-slot.stp-slot-over {
+    border-color: #8af;
+    background: rgba(136, 170, 255, 0.15);
+}
+
+.stp-layout-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.stp-rows-label {
+    color: #ccc;
+    font-size: 13px;
+}
+
+.stp-rows-input {
+    background: #1a1a1a;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: white;
+    padding: 2px 6px;
+    text-align: center;
+    width: 52px;
+}
+
+.stp-layout-hint {
+    color: #888;
+    font-size: 11px;
+    font-style: italic;
+    margin: 6px 0 12px;
+    text-align: center;
+}
+
+.stp-layout-empty {
+    color: #888;
+    font-style: italic;
+    padding: 16px 0;
+    text-align: center;
+}
+
+/* ── Move tab ────────────────────────────────────────────────────────────── */
+
+.stp-move-template-btn {
+    background: none;
+    border: none;
+    color: #88aaff;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 4px;
+    line-height: 1;
+}
+
+.stp-move-template-btn:hover { color: #aaccff; }
+
+.stp-remove-template-btn {
+    background: none;
+    border: none;
+    color: #c44;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    line-height: 1;
+}
+
+.stp-remove-template-btn:hover { color: #f66; }
+
+.stp-pending-move {
+    opacity: 0.65;
+}
+
+.stp-move-empty {
+    color: #888;
+    font-style: italic;
+    padding: 16px 0;
+    text-align: center;
 }
 
 /* ── Extra tab ───────────────────────────────────────────────────────────── */

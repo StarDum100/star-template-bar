@@ -16,6 +16,12 @@ function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
 }
 
+function getBarGrid(customTemplates = getCustomTemplates()) {
+    const saved = game.user.getFlag(MODULE_ID, "barGrid");
+    if (saved?.length) return saved;
+    return [customTemplates.map(t => t.name)];
+}
+
 async function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     if (!canvas?.scene) {
         ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
@@ -29,7 +35,6 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
         const prevCursor = document.body.style.cursor;
         document.body.style.cursor = "crosshair";
 
-        // Build a preview template on the template layer's preview container
         const doc = new CONFIG.MeasuredTemplate.documentClass({
             t,
             x:         startX,
@@ -101,6 +106,68 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
     });
 }
 
+async function pickNewPosition(templateData) {
+    if (!canvas?.scene) return null;
+
+    return new Promise((resolve) => {
+        const prevCursor = document.body.style.cursor;
+        document.body.style.cursor = "crosshair";
+
+        const { t, distance, angle, width, fillColor } = templateData;
+        const { x: startX, y: startY } = canvas.mousePosition;
+
+        const doc = new CONFIG.MeasuredTemplate.documentClass({
+            t,
+            x:         startX,
+            y:         startY,
+            distance:  Math.max(5, distance),
+            angle:     angle ?? 53.13,
+            width:     Math.max(5, width ?? distance),
+            direction: t === "rect" ? 45 : 0,
+            fillColor,
+            borderColor: fillColor,
+            user: game.user.id,
+        }, { parent: canvas.scene });
+
+        const template = new CONFIG.MeasuredTemplate.objectClass(doc);
+        canvas.templates.preview.addChild(template);
+        template.draw?.().catch?.(() => {});
+
+        const cleanup = () => {
+            canvas.templates.preview.removeChild(template);
+            template.destroy?.({ children: true });
+            canvas.app.view.removeEventListener("pointermove", onMove);
+            canvas.app.view.removeEventListener("pointerdown", onPlace);
+            window.removeEventListener("keydown", onCancel);
+            document.body.style.cursor = prevCursor;
+        };
+
+        const onMove = () => {
+            const { x, y } = canvas.mousePosition;
+            const snapped  = canvas.grid?.getSnappedPosition?.(x, y) ?? { x, y };
+            template.document.updateSource({ x: snapped.x, y: snapped.y });
+            template.refresh?.();
+        };
+
+        const onPlace = () => {
+            cleanup();
+            const { x: rawX, y: rawY } = canvas.mousePosition;
+            const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
+            resolve({ x, y });
+        };
+
+        const onCancel = (e) => {
+            if (e.key !== "Escape") return;
+            cleanup();
+            resolve(null);
+        };
+
+        canvas.app.view.addEventListener("pointermove", onMove);
+        canvas.app.view.addEventListener("pointerdown", onPlace);
+        window.addEventListener("keydown", onCancel);
+    });
+}
+
 function templateOwnerName(t) {
     return t.author?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
 }
@@ -110,7 +177,7 @@ function templateDistanceFt(t) {
     return Math.round(t.distance * gridDistance);
 }
 
-function buildRemoveContent(templates) {
+function buildMoveContent(templates, pendingMoves) {
     const gridDistance = canvas?.scene?.grid?.distance ?? 1;
     const rows = templates.map(t => {
         const f         = t.flags?.[MODULE_ID] ?? {};
@@ -128,16 +195,18 @@ function buildRemoveContent(templates) {
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
         }
+        const moved = pendingMoves.has(t.id);
         return `
-            <tr data-id="${escapeHtml(t.id)}">
+            <tr data-id="${escapeHtml(t.id)}"${moved ? ' class="stp-pending-move"' : ''}>
                 <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
                 <td>${distCell}</td>
                 <td>${angleCell}</td>
                 <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
-                <td class="stp-delete-cell">
-                    <button type="button" class="stp-remove-template-btn">&#10005;</button>
+                <td class="stp-action-cell">
+                    <button type="button" class="stp-move-template-btn" title="Pick up and move this template">&#9999;</button>
+                    <button type="button" class="stp-remove-template-btn" title="Delete this template">&#10005;</button>
                 </td>
             </tr>
         `;
@@ -185,17 +254,38 @@ function initBarDrag(bar) {
     });
 }
 
-function renderCustomButtons(bar) {
-    bar.find(".stp-custom-btn").remove();
-    const configBtn = bar.find(".stp-config-btn");
-    for (const tpl of getCustomTemplates()) {
-        const btn = $("<button>")
-            .addClass("stp-custom-btn")
-            .attr("title", `${tpl.name} (${tpl.t}, ${tpl.distance}ft)`)
-            .text(tpl.name);
-        btn.css("border-left", `3px solid ${tpl.fillColor}`);
-        btn.on("click", () => placeTemplate(tpl));
-        btn.insertBefore(configBtn);
+function renderCustomButtons(bar, overrides = {}) {
+    const customTemplates = overrides.customTemplates ?? getCustomTemplates();
+    const grid            = overrides.grid            ?? getBarGrid(customTemplates);
+    const knownNames      = new Set(customTemplates.map(t => t.name));
+    const byName          = Object.fromEntries(customTemplates.map(t => [t.name, t]));
+
+    const gridEl  = bar.find(".stp-custom-grid");
+    gridEl.empty();
+
+    const multirow = grid.length > 1;
+    bar.toggleClass("stp-bar-multirow", multirow);
+    if (multirow) {
+        const maxCols = Math.max(...grid.map(r => r.length));
+        gridEl.css("--stp-cols", maxCols);
+    } else {
+        gridEl.css("--stp-cols", "");
+    }
+
+    for (const row of grid) {
+        const rowEl = $('<div class="stp-bar-row">');
+        for (const name of row) {
+            if (!knownNames.has(name)) continue;
+            const tpl = byName[name];
+            const btn = $("<button>")
+                .addClass("stp-custom-btn")
+                .attr("title", `${tpl.name} (${tpl.t}, ${tpl.distance}ft)`)
+                .text(tpl.name);
+            btn.css("border-left", `3px solid ${tpl.fillColor}`);
+            btn.on("click", () => placeTemplate(tpl));
+            rowEl.append(btn);
+        }
+        gridEl.append(rowEl);
     }
 }
 
@@ -218,6 +308,58 @@ function makeCustomRow(tpl, index) {
             <td class="stp-delete-cell"><button type="button" class="stp-delete-btn">&#10005;</button></td>
         </tr>
     `;
+}
+
+function renderLayoutEditor(html, pendingGrid, pendingCustom) {
+    const panel = html.find('[data-panel="layout"]');
+    panel.empty();
+
+    const knownNames = new Set(pendingCustom.map(t => t.name));
+    const flat = pendingGrid.flat().filter(name => knownNames.has(name));
+
+    if (flat.length === 0) {
+        panel.append('<p class="stp-layout-empty">No custom templates configured. Add templates on the Templates tab.</p>');
+        return;
+    }
+
+    const numRows = pendingGrid.length || 1;
+    const numCols = Math.ceil(flat.length / numRows);
+
+    panel.append('<p class="stp-layout-hint">Drag any template to a slot to reorder &middot; Change the row count to reorganize the grid</p>');
+
+    const controls = $('<div class="stp-layout-controls">');
+    const rowInput  = $('<input type="number" class="stp-rows-input">')
+        .attr("min", 1).attr("max", flat.length).val(numRows);
+    controls.append($('<label class="stp-rows-label">').text("Number of Rows: ").append(rowInput));
+    panel.append(controls);
+
+    const editor = $('<div class="stp-layout-editor">');
+    for (let r = 0; r < numRows; r++) {
+        const rowEl = $('<div class="stp-layout-row">');
+        for (let c = 0; c < numCols; c++) {
+            const idx = r * numCols + c;
+            if (idx < flat.length) {
+                rowEl.append(
+                    $('<div class="stp-layout-tile" draggable="true">')
+                        .attr("data-index", idx)
+                        .text(flat[idx])
+                );
+            } else {
+                rowEl.append($('<div class="stp-layout-slot">').attr("data-index", idx));
+            }
+        }
+        editor.append(rowEl);
+    }
+    panel.append(editor);
+}
+
+function reshapeGrid(pendingGrid, numRows, flat = pendingGrid.flat()) {
+    const numCols = Math.ceil(flat.length / numRows);
+    pendingGrid.splice(0);
+    for (let r = 0; r < numRows; r++) {
+        const row = flat.slice(r * numCols, (r + 1) * numCols);
+        if (row.length > 0) pendingGrid.push(row);
+    }
 }
 
 async function openPlaceDialog() {
@@ -297,15 +439,19 @@ async function openPlaceDialog() {
     }
 }
 
-async function openConfig(bar, initialTab = "templates") {
+async function openConfig(bar, initialTab = "templates", resumeState = null) {
     const barHidden     = game.settings.get(MODULE_ID, "barHidden");
-    const pendingCustom = [...getCustomTemplates()];
+    const pendingCustom = resumeState?.pendingCustom ?? [...getCustomTemplates()];
+    const pendingGrid   = resumeState?.pendingGrid   ?? getBarGrid(pendingCustom).map(row => [...row]);
 
     let saved                = false;
-    let pendingResetPosition = false;
-    let originalPosition     = null;
-    const pendingRemovals      = [];
-    const pendingRemovalOriginals = new Map();
+    let pendingResetPosition = resumeState?.pendingResetPosition ?? false;
+    let originalPosition     = resumeState?.originalPosition     ?? null;
+    const pendingRemovals         = resumeState?.pendingRemovals         ?? [];
+    const pendingRemovalOriginals = resumeState?.pendingRemovalOriginals ?? new Map();
+    const pendingMoves            = resumeState?.pendingMoves            ?? new Map();
+
+    let moveRequested = null;
 
     const typeOptions = TEMPLATE_TYPES.map(t =>
         `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
@@ -321,7 +467,8 @@ async function openConfig(bar, initialTab = "templates") {
     const content = `
         <div class="stp-tabs">
             <button type="button" class="${tab("templates")}" data-tab="templates">Templates</button>
-            <button type="button" class="${tab("remove")}"    data-tab="remove">Remove</button>
+            <button type="button" class="${tab("move")}"      data-tab="move">Move</button>
+            <button type="button" class="${tab("layout")}"    data-tab="layout">Layout</button>
             <button type="button" class="${tab("reset")}"     data-tab="reset">Reset</button>
             <button type="button" class="${tab("extra")}"     data-tab="extra">Extra</button>
         </div>
@@ -368,7 +515,8 @@ async function openConfig(bar, initialTab = "templates") {
                 </div>
             </div>
         </div>
-        <div class="${panel("remove")}" data-panel="remove"></div>
+        <div class="${panel("layout")}" data-panel="layout"></div>
+        <div class="${panel("move")}" data-panel="move"></div>
         <div class="${panel("extra")}" data-panel="extra">
             <div class="stp-extra-panel">
                 <label class="stp-extra-item">
@@ -406,6 +554,11 @@ async function openConfig(bar, initialTab = "templates") {
                     saved = true;
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
+                    await game.user.setFlag(MODULE_ID, "barGrid", pendingGrid);
+                    for (const [id, pos] of pendingMoves) {
+                        const tpl = canvas?.scene?.templates?.get(id);
+                        if (tpl) await tpl.update(pos);
+                    }
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
@@ -413,7 +566,7 @@ async function openConfig(bar, initialTab = "templates") {
                     await game.settings.set(MODULE_ID, "barHidden", newBarHidden);
                     if (newBarHidden) bar.hide();
                     else             bar.show();
-                    renderCustomButtons(bar);
+                    renderCustomButtons(bar, { customTemplates: pendingCustom, grid: pendingGrid });
                 }
             },
             { action: "cancel", label: "Cancel", default: true }
@@ -421,14 +574,14 @@ async function openConfig(bar, initialTab = "templates") {
         render: (event, dialog) => {
             const $html = $(dialog.element);
 
-            function renderRemoveTab() {
-                const removePanelEl = $html.find('[data-panel="remove"]');
+            function renderMoveTab() {
+                const movePanelEl = $html.find('[data-panel="move"]');
                 const templates = (canvas?.scene?.templates?.contents ?? [])
                     .filter(t => !pendingRemovals.includes(t.id));
                 if (templates.length === 0) {
-                    removePanelEl.html('<p class="stp-remove-empty">No templates on the map.</p>');
+                    movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
                 } else {
-                    removePanelEl.html(buildRemoveContent(templates));
+                    movePanelEl.html(buildMoveContent(templates, pendingMoves));
                 }
             }
 
@@ -439,10 +592,11 @@ async function openConfig(bar, initialTab = "templates") {
                 $(e.currentTarget).addClass("stp-tab-active");
                 $html.find(".stp-tab-panel").addClass("stp-tab-panel-hidden");
                 $html.find(`[data-panel="${tabName}"]`).removeClass("stp-tab-panel-hidden");
-                if (tabName === "remove") renderRemoveTab();
+                if (tabName === "move")   renderMoveTab();
+                if (tabName === "layout") renderLayoutEditor($html, pendingGrid, pendingCustom);
             });
 
-            // Cone/width/height row toggle in add form
+            // Type toggle in add form
             $html.on("change", ".stp-new-type", (e) => {
                 const type = e.target.value;
                 $html.find(".stp-new-cone-row").toggle(type === "cone");
@@ -454,7 +608,16 @@ async function openConfig(bar, initialTab = "templates") {
             // Delete a custom template row
             $html.on("click", ".stp-delete-btn", (e) => {
                 const index = parseInt($(e.currentTarget).closest("tr").data("index"));
+                const name  = pendingCustom[index].name;
                 pendingCustom.splice(index, 1);
+                for (let r = 0; r < pendingGrid.length; r++) {
+                    const idx = pendingGrid[r].indexOf(name);
+                    if (idx !== -1) {
+                        pendingGrid[r].splice(idx, 1);
+                        if (pendingGrid[r].length === 0) pendingGrid.splice(r, 1);
+                        break;
+                    }
+                }
                 $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
             });
 
@@ -476,6 +639,8 @@ async function openConfig(bar, initialTab = "templates") {
                 const height    = Math.max(5, parseFloat($html.find(".stp-new-height").val()) || 20);
                 const fillColor = $html.find(".stp-new-color").val();
                 pendingCustom.push({ name, t, distance, angle, width, height, fillColor });
+                if (pendingGrid.length === 0) pendingGrid.push([name]);
+                else pendingGrid[pendingGrid.length - 1].push(name);
                 $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
                 $html.find(".stp-new-name").val("").focus();
             });
@@ -484,7 +649,7 @@ async function openConfig(bar, initialTab = "templates") {
                 if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
             });
 
-            // Remove tab: delete immediately for preview; recreated on Cancel
+            // Move tab: delete a scene template immediately (preview; restored on Cancel)
             $html.on("click", ".stp-remove-template-btn", async (e) => {
                 const row = $(e.currentTarget).closest("tr");
                 const id  = row.attr("data-id");
@@ -495,9 +660,71 @@ async function openConfig(bar, initialTab = "templates") {
                     await stagedTpl.delete();
                 }
                 row.remove();
-                if ($html.find('[data-panel="remove"] tbody tr[data-id]').length === 0) {
-                    $html.find('[data-panel="remove"]').html('<p class="stp-remove-empty">No templates on the map.</p>');
+                if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
+                    $html.find('[data-panel="move"]').html('<p class="stp-move-empty">No templates on the map.</p>');
                 }
+            });
+
+            // Move tab: pick up a template and reposition it
+            $html.on("click", ".stp-move-template-btn", (e) => {
+                const id  = $(e.currentTarget).closest("tr").attr("data-id");
+                const tpl = canvas?.scene?.templates?.get(id);
+                if (!tpl) return;
+                moveRequested = id;
+                dialog.close();
+            });
+
+            // Layout tab: drag-and-drop
+            let dragIndex = -1;
+
+            $html.on("dragstart", ".stp-layout-tile", (e) => {
+                dragIndex = parseInt($(e.currentTarget).data("index"));
+                e.originalEvent.dataTransfer.effectAllowed = "move";
+                setTimeout(() => $(e.currentTarget).addClass("stp-dragging"), 0);
+            });
+
+            $html.on("dragend", ".stp-layout-tile", () => {
+                $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-dragging stp-slot-over");
+                dragIndex = -1;
+            });
+
+            $html.on("dragover", ".stp-layout-tile, .stp-layout-slot", (e) => {
+                const idx = parseInt($(e.currentTarget).data("index"));
+                if (dragIndex === -1 || idx === dragIndex) return;
+                e.preventDefault();
+                $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-slot-over");
+                $(e.currentTarget).addClass("stp-slot-over");
+            });
+
+            $html.on("dragleave", ".stp-layout-tile, .stp-layout-slot", (e) => {
+                $(e.currentTarget).removeClass("stp-slot-over");
+            });
+
+            $html.on("drop", ".stp-layout-tile, .stp-layout-slot", (e) => {
+                e.preventDefault();
+                const tgtIdx = parseInt($(e.currentTarget).data("index"));
+                const srcIdx = dragIndex;
+                dragIndex = -1;
+                if (srcIdx === -1 || tgtIdx === srcIdx) return;
+
+                const flat = pendingGrid.flat();
+                const name = flat[srcIdx];
+                flat.splice(srcIdx, 1);
+                const adjusted = srcIdx < tgtIdx ? tgtIdx - 1 : tgtIdx;
+                flat.splice(Math.min(adjusted, flat.length), 0, name);
+
+                reshapeGrid(pendingGrid, pendingGrid.length, flat);
+                renderLayoutEditor($html, pendingGrid, pendingCustom);
+            });
+
+            $html.on("change", ".stp-rows-input", (e) => {
+                const flat = pendingGrid.flat();
+                let n = parseInt(e.target.value);
+                if (isNaN(n) || n < 1) n = 1;
+                if (n > flat.length) n = flat.length;
+                $(e.target).val(n);
+                reshapeGrid(pendingGrid, n, flat);
+                renderLayoutEditor($html, pendingGrid, pendingCustom);
             });
 
             // Extra tab: live preview hide/show
@@ -518,9 +745,23 @@ async function openConfig(bar, initialTab = "templates") {
                 applyBarPosition(bar, null);
             });
 
-            if (initialTab === "remove") renderRemoveTab();
+            if (initialTab === "move")   renderMoveTab();
+            if (initialTab === "layout") renderLayoutEditor($html, pendingGrid, pendingCustom);
         }
     });
+
+    if (moveRequested) {
+        const tpl = canvas?.scene?.templates?.get(moveRequested);
+        if (tpl) {
+            const newPos = await pickNewPosition(tpl.toObject());
+            if (newPos) pendingMoves.set(moveRequested, newPos);
+        }
+        await openConfig(bar, "move", {
+            pendingCustom, pendingGrid, pendingRemovals, pendingRemovalOriginals,
+            pendingMoves, pendingResetPosition, originalPosition,
+        });
+        return;
+    }
 
     if (!saved) {
         for (const originalData of pendingRemovalOriginals.values()) {
@@ -563,10 +804,13 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
     const bar = $(`<div class="stp-template-bar">
-        <span class="stp-bar-handle" title="Drag to move bar">&#8801;</span>
-        <button class="stp-place-btn" title="Place a template on the map">&#8853; Place</button>
-        <button class="stp-remove-btn" title="Remove placed templates">&#10005; Remove</button>
-        <button class="stp-config-btn" title="Configure templates">&#9881;</button>
+        <div class="stp-bar-controls">
+            <span class="stp-bar-handle" title="Drag to move bar">&#8801;</span>
+            <button class="stp-place-btn" title="Place a template on the map">&#8853; Place</button>
+            <button class="stp-move-btn" title="Move or remove placed templates">&#8597; Move</button>
+            <button class="stp-config-btn" title="Configure templates">&#9881;</button>
+        </div>
+        <div class="stp-custom-grid"></div>
     </div>`);
 
     $("body").append(bar);
@@ -576,16 +820,16 @@ Hooks.once("ready", () => {
     if (game.settings.get(MODULE_ID, "barHidden")) bar.hide();
 
     bar.find(".stp-place-btn").on("click",  () => openPlaceDialog());
-    bar.find(".stp-remove-btn").on("click", () => {
+    bar.find(".stp-move-btn").on("click", () => {
         if (!canvas?.scene) {
             ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
             return;
         }
         if (canvas.scene.templates.contents.length === 0) {
-            ui.notifications.warn(`${MODULE_TITLE}: No templates to remove.`);
+            ui.notifications.warn(`${MODULE_TITLE}: No templates to move.`);
             return;
         }
-        openConfig(bar, "remove");
+        openConfig(bar, "move");
     });
     bar.find(".stp-config-btn").on("click", () => openConfig(bar));
 });

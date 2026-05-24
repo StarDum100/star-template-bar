@@ -77,9 +77,13 @@ global.ui = {
 global.foundry = { applications: { api: { DialogV2: {} } } };
 global.foundry.applications.api.DialogV2.wait = jest.fn().mockImplementation((options) => {
     global.foundry.applications.api.DialogV2.__lastOptions = options;
-    const instance = { render: jest.fn(), close: jest.fn(), element: document.createElement("div") };
-    global.foundry.applications.api.DialogV2.__lastInstance = instance;
     let resolveDialog;
+    const instance = {
+        render: jest.fn(),
+        close:  jest.fn(() => resolveDialog?.(null)),
+        element: document.createElement("div"),
+    };
+    global.foundry.applications.api.DialogV2.__lastInstance = instance;
     global.foundry.applications.api.DialogV2.__resolveDialog = (val) => resolveDialog(val);
     return new Promise(r => { resolveDialog = r; });
 });
@@ -141,6 +145,27 @@ function setupBar(flagOverrides = {}) {
     hookCallbacks["ready"]();
 }
 
+function makeTemplate(id, user, t, distance) {
+    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance };
+    return {
+        id, user, t, distance,
+        fillColor: "#ff4400", borderColor: "#ff4400",
+        toObject: jest.fn().mockReturnValue(originalData),
+        delete:   jest.fn().mockResolvedValue(undefined),
+        update:   jest.fn().mockResolvedValue(undefined),
+    };
+}
+
+function openConfigOnMoveTab(templates) {
+    setupBar();
+    global.canvas.scene.templates.contents = templates;
+    global.canvas.scene.templates.get.mockImplementation(id =>
+        templates.find(t => t.id === id)
+    );
+    document.querySelector(".stp-move-btn").click();
+    return openDialogHtml();
+}
+
 // ── Star Template Placer (integration) ────────────────────────────────────
 
 describe("Star Template Placer", () => {
@@ -193,8 +218,8 @@ describe("Star Template Placer", () => {
             expect(document.querySelector(".stp-place-btn")).not.toBeNull();
         });
 
-        it("renders a Remove button", () => {
-            expect(document.querySelector(".stp-remove-btn")).not.toBeNull();
+        it("renders a Move button", () => {
+            expect(document.querySelector(".stp-move-btn")).not.toBeNull();
         });
 
         it("renders a config button", () => {
@@ -524,36 +549,16 @@ describe("Star Template Placer", () => {
         });
     });
 
-    describe("Remove button", () => {
-        function makeTemplate(id, user, t, distance) {
-            const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance };
-            return {
-                id, user, t, distance,
-                fillColor: "#ff4400", borderColor: "#ff4400",
-                toObject: jest.fn().mockReturnValue(originalData),
-                delete: jest.fn().mockResolvedValue(undefined),
-            };
-        }
-
-        function openConfigOnRemoveTab(templates) {
-            setupBar();
-            global.canvas.scene.templates.contents = templates;
-            global.canvas.scene.templates.get.mockImplementation(id =>
-                templates.find(t => t.id === id)
-            );
-            document.querySelector(".stp-remove-btn").click();
-            return openDialogHtml();
-        }
-
+    describe("Move button", () => {
         beforeEach(() => { setupBar(); });
 
-        it("warns when there are no templates to remove", async () => {
+        it("warns when there are no templates to move", async () => {
             global.ui.notifications.warn.mockClear();
             global.canvas.scene.templates.contents = [];
-            document.querySelector(".stp-remove-btn").click();
+            document.querySelector(".stp-move-btn").click();
             await new Promise(r => setTimeout(r, 0));
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
-                expect.stringContaining("No templates to remove")
+                expect.stringContaining("No templates to move")
             );
         });
 
@@ -561,7 +566,7 @@ describe("Star Template Placer", () => {
             const originalScene = global.canvas.scene;
             global.canvas.scene = null;
             global.ui.notifications.warn.mockClear();
-            document.querySelector(".stp-remove-btn").click();
+            document.querySelector(".stp-move-btn").click();
             await new Promise(r => setTimeout(r, 0));
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No active scene")
@@ -572,7 +577,7 @@ describe("Star Template Placer", () => {
         it("does not open a dialog when there are no templates", async () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [];
-            document.querySelector(".stp-remove-btn").click();
+            document.querySelector(".stp-move-btn").click();
             await new Promise(r => setTimeout(r, 0));
             expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
         });
@@ -580,117 +585,116 @@ describe("Star Template Placer", () => {
         it("opens the config dialog when templates exist", () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [makeTemplate("t1", "user-001", "circle", 4)];
-            document.querySelector(".stp-remove-btn").click();
+            document.querySelector(".stp-move-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
-        it("opens with the Remove tab active", () => {
-            const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-            expect(html.find(".stp-tab.stp-tab-active").data("tab")).toBe("remove");
+        it("opens with the Move tab active", () => {
+            const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+            expect(html.find(".stp-tab.stp-tab-active").data("tab")).toBe("move");
         });
 
-        it("Remove tab panel is visible on open", () => {
-            const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-            expect(html.find("[data-panel='remove']").hasClass("stp-tab-panel-hidden")).toBe(false);
+        it("Move tab panel is visible on open", () => {
+            const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+            expect(html.find("[data-panel='move']").hasClass("stp-tab-panel-hidden")).toBe(false);
         });
 
-        describe("remove tab content", () => {
+        describe("move tab content", () => {
             it("shows one row per scene template", () => {
-                const { html } = openConfigOnRemoveTab([
+                const { html } = openConfigOnMoveTab([
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "cone",   6),
                 ]);
-                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(2);
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(2);
             });
 
             it("shows the template name from flags when present", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 tpl.flags = { "star-template-placer": { name: "Fireball" } };
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("Fireball");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(0).text()).toBe("Fireball");
             });
 
             it("shows empty name when no flag name is set", () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(0).text()).toBe("");
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="move"] tbody td').eq(0).text()).toBe("");
             });
 
             it("shows the owner name via template.author", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 tpl.author = { name: "Gandalf" };
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("Gandalf");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Gandalf");
             });
 
             it("falls back to game.users when author is absent", () => {
                 global.game.users.get.mockReturnValue({ name: "Saruman" });
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("Saruman");
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Saruman");
             });
 
             it("shows 'Unknown' when neither author nor game.users resolves", () => {
                 global.game.users.get.mockReturnValue(undefined);
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-999", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(1).text()).toBe("Unknown");
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-999", "circle", 4)]);
+                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Unknown");
             });
 
             it("shows the template type", () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "cone", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(2).text()).toBe("cone");
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "cone", 4)]);
+                expect(html.find('[data-panel="move"] tbody td').eq(2).text()).toBe("cone");
             });
 
             it("shows a color swatch with the template fill color", () => {
-                const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                const { html } = openConfigOnRemoveTab([tpl]);
-                const swatch = html.find('[data-panel="remove"] .stp-color-swatch');
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                const swatch = html.find('[data-panel="move"] .stp-color-swatch');
                 expect(swatch).toHaveLength(1);
                 expect(swatch.attr("style")).toContain("#ff4400");
             });
 
             it("multiplies distance by grid.distance to display feet", () => {
                 global.canvas.scene.grid.distance = 5;
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("20ft");
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
             it("shows distance × width for ray templates from template data", () => {
                 global.canvas.scene.grid.distance = 5;
                 const tpl = makeTemplate("t1", "user-001", "ray", 4);
                 tpl.width = 3;
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("20ft × 15ft");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 15ft");
             });
 
             it("shows distance × width for ray templates from flags", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 4);
                 tpl.flags = { "star-template-placer": { distance: 100, width: 5 } };
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("100ft × 5ft");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("100ft × 5ft");
             });
 
-            it("shows width × height for rect from flags in the remove tab", () => {
+            it("shows width × height for rect from flags in the move tab", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
                 tpl.flags = { "star-template-placer": { width: 30, height: 40 } };
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("30ft × 40ft");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("30ft × 40ft");
             });
 
             it("shows dash for rect dimensions when flags are absent", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(3).text()).toBe("—");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("—");
             });
 
             it("shows angle in degrees for cone templates", () => {
                 const tpl = makeTemplate("t1", "user-001", "cone", 4);
                 tpl.angle = 90;
-                const { html } = openConfigOnRemoveTab([tpl]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("90°");
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("90°");
             });
 
             it("shows dash for angle when template is not a cone", () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="remove"] tbody td').eq(4).text()).toBe("—");
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("—");
             });
 
             it("shows an empty state message when there are no templates", () => {
@@ -698,36 +702,44 @@ describe("Star Template Placer", () => {
                 global.canvas.scene.templates.contents = [];
                 document.querySelector(".stp-config-btn").click();
                 const { html } = openDialogHtml();
-                html.find("[data-tab='remove']").trigger("click");
-                expect(html.find(".stp-remove-empty").length).toBe(1);
+                html.find("[data-tab='move']").trigger("click");
+                expect(html.find(".stp-move-empty").length).toBe(1);
             });
 
-            it("each row has a remove button", () => {
-                const { html } = openConfigOnRemoveTab([
+            it("each row has a delete button", () => {
+                const { html } = openConfigOnMoveTab([
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "circle", 4),
                 ]);
                 expect(html.find(".stp-remove-template-btn")).toHaveLength(2);
             });
 
-            it("calls delete immediately when remove button is clicked", async () => {
+            it("each row has an edit/move button", () => {
+                const { html } = openConfigOnMoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-001", "circle", 4),
+                ]);
+                expect(html.find(".stp-move-template-btn")).toHaveLength(2);
+            });
+
+            it("calls delete immediately when delete button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                const { html } = openConfigOnRemoveTab([tpl]);
+                const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
                 expect(tpl.delete).toHaveBeenCalled();
             });
 
-            it("stores the full original data via toObject when remove button is clicked", async () => {
+            it("stores the full original data via toObject when delete button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                const { html } = openConfigOnRemoveTab([tpl]);
+                const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
                 expect(tpl.toObject).toHaveBeenCalled();
             });
 
-            async function removeAndCancel(tpl) {
-                openConfigOnRemoveTab([tpl]);
+            async function deleteAndCancel(tpl) {
+                openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
@@ -746,8 +758,9 @@ describe("Star Template Placer", () => {
                     fillColor: "#ff4400",
                     toObject: jest.fn().mockReturnValue(originalData),
                     delete: jest.fn().mockResolvedValue(undefined),
+                    update: jest.fn().mockResolvedValue(undefined),
                 };
-                await removeAndCancel(tpl);
+                await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({ distance: 20 * Math.SQRT2, width: 30 })],
@@ -765,8 +778,9 @@ describe("Star Template Placer", () => {
                     fillColor: "#ff4400",
                     toObject: jest.fn().mockReturnValue(originalData),
                     delete: jest.fn().mockResolvedValue(undefined),
+                    update: jest.fn().mockResolvedValue(undefined),
                 };
-                await removeAndCancel(tpl);
+                await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({ distance: 100, width: 5 })],
@@ -776,7 +790,7 @@ describe("Star Template Placer", () => {
 
             it("restores non-module templates from toObject data on Cancel", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                await removeAndCancel(tpl);
+                await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", [tpl.toObject()], { keepId: true }
                 );
@@ -784,7 +798,7 @@ describe("Star Template Placer", () => {
 
             it("does not recreate templates when Save is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                const { html, options } = openConfigOnRemoveTab([tpl]);
+                const { html, options } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
@@ -796,62 +810,156 @@ describe("Star Template Placer", () => {
                 );
             });
 
-            it("pending-removed template does not reappear when Remove tab is re-entered", async () => {
+            it("pending-deleted template does not reappear when Move tab is re-entered", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                const { html } = openConfigOnRemoveTab([tpl]);
+                const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 html.find("[data-tab='templates']").trigger("click");
-                html.find("[data-tab='remove']").trigger("click");
-                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(0);
-                expect(html.find(".stp-remove-empty").length).toBe(1);
+                html.find("[data-tab='move']").trigger("click");
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
+                expect(html.find(".stp-move-empty").length).toBe(1);
             });
 
             it("removes the row from the table after delete", async () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(0);
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
             });
 
-            it("shows empty state when last template is removed", async () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+            it("shows empty state when last template is deleted", async () => {
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(html.find(".stp-remove-empty").length).toBe(1);
+                expect(html.find(".stp-move-empty").length).toBe(1);
             });
 
             it("only removes the clicked row, leaving others", async () => {
-                const { html } = openConfigOnRemoveTab([
+                const { html } = openConfigOnMoveTab([
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "circle", 6),
                 ]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(1);
-                expect(html.find('[data-panel="remove"] tbody tr[data-id="t2"]')).toHaveLength(1);
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(1);
+                expect(html.find('[data-panel="move"] tbody tr[data-id="t2"]')).toHaveLength(1);
             });
 
             it("still removes the row when the template is already gone from the scene", async () => {
-                const { html } = openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 global.canvas.scene.templates.get.mockReturnValue(undefined);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(html.find('[data-panel="remove"] tbody tr[data-id]')).toHaveLength(0);
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
             });
 
             describe("XSS in template data", () => {
                 it("does not execute a script tag in the owner name", () => {
                     window.__xssOwner = undefined;
                     global.game.users.get.mockReturnValue({ name: "<script>window.__xssOwner=true</script>" });
-                    openConfigOnRemoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+                    openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                     expect(window.__xssOwner).toBeUndefined();
                 });
 
                 it("does not execute a script tag in the template type", () => {
                     window.__xssType = undefined;
-                    openConfigOnRemoveTab([makeTemplate("t1", "user-001", "<script>window.__xssType=true</script>", 4)]);
+                    openConfigOnMoveTab([makeTemplate("t1", "user-001", "<script>window.__xssType=true</script>", 4)]);
                     expect(window.__xssType).toBeUndefined();
                 });
+            });
+        });
+
+        describe("edit/move button", () => {
+            it("clicking the move button closes the config dialog", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                const { html } = openConfigOnMoveTab([tpl]);
+                const instance = global.foundry.applications.api.DialogV2.__lastInstance;
+                html.find(".stp-move-template-btn").eq(0).trigger("click");
+                expect(instance.close).toHaveBeenCalled();
+            });
+
+            it("after clicking the move button, a canvas pointerdown listener is registered", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                global.canvas.app.view.addEventListener.mockClear();
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                // Close resolves the dialog promise
+                await new Promise(r => setTimeout(r, 0));
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.canvas.app.view.addEventListener).toHaveBeenCalledWith(
+                    "pointerdown", expect.any(Function)
+                );
+            });
+
+            it("after canvas click following a move, the config dialog reopens on the move tab", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                global.foundry.applications.api.DialogV2.wait.mockClear();
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
+                const lastOptions = global.foundry.applications.api.DialogV2.__lastOptions;
+                const reopened = document.createElement("div");
+                reopened.innerHTML = lastOptions.content;
+                expect($(reopened).find(".stp-tab.stp-tab-active").data("tab")).toBe("move");
+            });
+
+            it("on Save after a move, template.update is called with the new position", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // Second dialog is open; click Save
+                const options2 = global.foundry.applications.api.DialogV2.__lastOptions;
+                const inst2    = global.foundry.applications.api.DialogV2.__lastInstance;
+                const container2 = document.createElement("div");
+                container2.innerHTML = options2.content;
+                inst2.element = container2;
+                const saveBtn = options2.buttons.find(b => b.action === "save");
+                await saveBtn.callback(null, null, { element: container2 });
+                expect(tpl.update).toHaveBeenCalledWith(expect.objectContaining({ x: 300, y: 250 }));
+            });
+
+            it("on Cancel after picking a move position, template.update is NOT called", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // Second dialog is open; click Cancel
+                global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                await new Promise(r => setTimeout(r, 0));
+                expect(tpl.update).not.toHaveBeenCalled();
+            });
+
+            it("pending-move row gets stp-pending-move class on reopen", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // Open second dialog's move tab content
+                const options2 = global.foundry.applications.api.DialogV2.__lastOptions;
+                const inst2    = global.foundry.applications.api.DialogV2.__lastInstance;
+                const container2 = document.createElement("div");
+                container2.innerHTML = options2.content;
+                inst2.element = container2;
+                options2.render(new Event("render"), inst2);
+                expect($(container2).find("tr.stp-pending-move")).toHaveLength(1);
             });
         });
     });
@@ -910,17 +1018,37 @@ describe("Star Template Placer", () => {
             );
         });
 
-        it("custom buttons appear before the config button", () => {
+        it("custom buttons appear inside the custom grid container", () => {
             setupBar({
                 customTemplates: [
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                 ]
             });
-            const bar = document.querySelector(".stp-template-bar");
-            const children = [...bar.children];
-            const customIdx = children.findIndex(el => el.classList.contains("stp-custom-btn"));
-            const configIdx = children.findIndex(el => el.classList.contains("stp-config-btn"));
-            expect(customIdx).toBeLessThan(configIdx);
+            const grid = document.querySelector(".stp-custom-grid");
+            expect(grid).not.toBeNull();
+            expect(grid.querySelector(".stp-custom-btn")).not.toBeNull();
+        });
+
+        it("config button is not inside the custom grid", () => {
+            setupBar({
+                customTemplates: [
+                    { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
+                ]
+            });
+            const grid = document.querySelector(".stp-custom-grid");
+            const configBtn = document.querySelector(".stp-config-btn");
+            expect(grid.contains(configBtn)).toBe(false);
+        });
+
+        it("multiple custom templates each appear in the grid", () => {
+            setupBar({
+                customTemplates: [
+                    { name: "A", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                    { name: "B", t: "circle", distance: 20, angle: 57, fillColor: "#00ff00" },
+                ]
+            });
+            const grid = document.querySelector(".stp-custom-grid");
+            expect(grid.querySelectorAll(".stp-custom-btn")).toHaveLength(2);
         });
 
         describe("XSS in custom template names", () => {
@@ -980,8 +1108,10 @@ describe("Star Template Placer", () => {
                 ({ html } = openDialogHtml());
             });
 
-            function visiblePanel() {
-                return ["templates", "extra", "reset"].find(
+            const ALL_PANELS = ["templates", "layout", "move", "extra", "reset"];
+
+            function visiblePanels() {
+                return ALL_PANELS.filter(
                     name => !html.find(`[data-panel="${name}"]`).hasClass("stp-tab-panel-hidden")
                 );
             }
@@ -991,32 +1121,39 @@ describe("Star Template Placer", () => {
             });
 
             it("only the templates panel is visible on open", () => {
-                expect(visiblePanel()).toBe("templates");
+                expect(visiblePanels()).toEqual(["templates"]);
             });
 
             it("clicking Extra tab shows the extra panel", () => {
                 html.find("[data-tab='extra']").trigger("click");
-                expect(visiblePanel()).toBe("extra");
+                expect(visiblePanels()).toEqual(["extra"]);
             });
 
             it("clicking Reset tab shows the reset panel", () => {
                 html.find("[data-tab='reset']").trigger("click");
-                expect(visiblePanel()).toBe("reset");
+                expect(visiblePanels()).toEqual(["reset"]);
+            });
+
+            it("clicking Layout tab shows the layout panel", () => {
+                html.find("[data-tab='layout']").trigger("click");
+                expect(visiblePanels()).toEqual(["layout"]);
+            });
+
+            it("clicking Move tab shows the move panel", () => {
+                html.find("[data-tab='move']").trigger("click");
+                expect(visiblePanels()).toEqual(["move"]);
             });
 
             it("clicking Templates tab after navigating away shows it again", () => {
                 html.find("[data-tab='extra']").trigger("click");
                 html.find("[data-tab='templates']").trigger("click");
-                expect(visiblePanel()).toBe("templates");
+                expect(visiblePanels()).toEqual(["templates"]);
             });
 
             it("exactly one panel is visible at all times", () => {
-                for (const tab of ["reset", "extra", "templates", "reset"]) {
+                for (const tab of ["reset", "extra", "layout", "move", "templates", "reset"]) {
                     html.find(`[data-tab='${tab}']`).trigger("click");
-                    const visibleCount = ["templates", "extra", "reset"].filter(
-                        name => !html.find(`[data-panel="${name}"]`).hasClass("stp-tab-panel-hidden")
-                    ).length;
-                    expect(visibleCount).toBe(1);
+                    expect(visiblePanels()).toHaveLength(1);
                 }
             });
         });
@@ -1300,6 +1437,94 @@ describe("Star Template Placer", () => {
                 expect(global.game.user.setFlag).toHaveBeenCalledWith(
                     "star-template-placer", "customTemplates", []
                 );
+            });
+        });
+
+        describe("layout tab", () => {
+            function openLayout(flagOverrides = {}) {
+                setupBar(flagOverrides);
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find("[data-tab='layout']").trigger("click");
+                return html;
+            }
+
+            it("shows empty state when there are no custom templates", () => {
+                const html = openLayout();
+                expect(html.find(".stp-layout-empty")).toHaveLength(1);
+            });
+
+            it("shows tiles for each custom template", () => {
+                const html = openLayout({
+                    customTemplates: [
+                        { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                        { name: "Fog",      t: "circle", distance: 30, angle: 57, fillColor: "#aaaaaa" },
+                    ]
+                });
+                expect(html.find(".stp-layout-tile")).toHaveLength(2);
+                expect(html.find(".stp-layout-tile").eq(0).text()).toBe("Fireball");
+                expect(html.find(".stp-layout-tile").eq(1).text()).toBe("Fog");
+            });
+
+            it("shows a row count input defaulting to 1", () => {
+                const html = openLayout({
+                    customTemplates: [
+                        { name: "A", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                    ]
+                });
+                expect(html.find(".stp-rows-input").val()).toBe("1");
+            });
+
+            it("changing row count reshapes the layout", () => {
+                const html = openLayout({
+                    customTemplates: [
+                        { name: "A", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                        { name: "B", t: "circle", distance: 20, angle: 57, fillColor: "#00ff00" },
+                        { name: "C", t: "circle", distance: 20, angle: 57, fillColor: "#0000ff" },
+                        { name: "D", t: "circle", distance: 20, angle: 57, fillColor: "#ffff00" },
+                    ]
+                });
+                html.find(".stp-rows-input").val("2").trigger("change");
+                expect(html.find(".stp-layout-row")).toHaveLength(2);
+            });
+
+            it("saves barGrid on Save", async () => {
+                setupBar({
+                    customTemplates: [
+                        { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                    ]
+                });
+                document.querySelector(".stp-config-btn").click();
+                const { options } = openDialogHtml();
+                global.game.user.setFlag.mockClear();
+                const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+                const saveBtn = options.buttons.find(b => b.action === "save");
+                await saveBtn.callback(null, null, { element: container });
+                expect(global.game.user.setFlag).toHaveBeenCalledWith(
+                    "star-template-placer", "barGrid", expect.any(Array)
+                );
+            });
+
+            it("adding a template also adds it to the layout", () => {
+                const html = openLayout();
+                html.find("[data-tab='templates']").trigger("click");
+                html.find(".stp-new-name").val("Nova");
+                html.find(".stp-add-btn").trigger("click");
+                html.find("[data-tab='layout']").trigger("click");
+                expect(html.find(".stp-layout-tile").text()).toContain("Nova");
+            });
+
+            it("deleting a template removes it from the layout", () => {
+                const html = openLayout({
+                    customTemplates: [
+                        { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                    ]
+                });
+                expect(html.find(".stp-layout-tile")).toHaveLength(1);
+                html.find("[data-tab='templates']").trigger("click");
+                html.find(".stp-delete-btn").trigger("click");
+                html.find("[data-tab='layout']").trigger("click");
+                expect(html.find(".stp-layout-empty")).toHaveLength(1);
             });
         });
 
