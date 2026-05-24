@@ -146,11 +146,12 @@ function setupBar(flagOverrides = {}) {
 }
 
 function makeTemplate(id, user, t, distance) {
-    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance };
+    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance, x: 100, y: 100 };
     return {
         id, user, t, distance,
+        x: 100, y: 100,
         fillColor: "#ff4400", borderColor: "#ff4400",
-        toObject: jest.fn().mockReturnValue(originalData),
+        toObject: jest.fn().mockReturnValue({ ...originalData }),
         delete:   jest.fn().mockResolvedValue(undefined),
         update:   jest.fn().mockResolvedValue(undefined),
     };
@@ -908,7 +909,19 @@ describe("Star Template Placer", () => {
                 expect($(reopened).find(".stp-tab.stp-tab-active").data("tab")).toBe("move");
             });
 
-            it("on Save after a move, template.update is called with the new position", async () => {
+            it("canvas click immediately moves the template to the new position", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                expect(tpl.update).toHaveBeenCalledWith(expect.objectContaining({ x: 300, y: 250 }));
+            });
+
+            it("on Save after a move, the template remains at the new position", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
@@ -925,10 +938,11 @@ describe("Star Template Placer", () => {
                 inst2.element = container2;
                 const saveBtn = options2.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container2 });
-                expect(tpl.update).toHaveBeenCalledWith(expect.objectContaining({ x: 300, y: 250 }));
+                // update was called during canvas click; Save does not call it again with original
+                expect(tpl.update).not.toHaveBeenLastCalledWith(expect.objectContaining({ x: 100, y: 100 }));
             });
 
-            it("on Cancel after picking a move position, template.update is NOT called", async () => {
+            it("on Cancel after picking a move position, original position is restored", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
@@ -940,7 +954,57 @@ describe("Star Template Placer", () => {
                 // Second dialog is open; click Cancel
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await new Promise(r => setTimeout(r, 0));
-                expect(tpl.update).not.toHaveBeenCalled();
+                expect(tpl.update).toHaveBeenLastCalledWith(expect.objectContaining({ x: 100, y: 100 }));
+            });
+
+            it("preview uses module flag dimensions when flags are present", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.toObject.mockReturnValue({
+                    t: "circle", distance: 4, x: 100, y: 100,
+                    fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: { "star-template-placer": { distance: 30 } },
+                });
+                openConfigOnMoveTab([tpl]);
+                global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
+                    expect.objectContaining({ t: "circle", distance: 30 }), expect.anything()
+                );
+            });
+
+            it("preview for rect uses flag width and height × SQRT2 as distance", async () => {
+                const tpl = makeTemplate("t1", "user-001", "rect", 999);
+                tpl.toObject.mockReturnValue({
+                    t: "rect", distance: 999, width: 999, direction: 45, x: 100, y: 100,
+                    fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: { "star-template-placer": { width: 30, height: 40 } },
+                });
+                openConfigOnMoveTab([tpl]);
+                global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
+                    expect.objectContaining({ t: "rect", width: 30, distance: 40 * Math.SQRT2 }),
+                    expect.anything()
+                );
+            });
+
+            it("preview falls back to raw document fields when no module flags are present", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 7);
+                openConfigOnMoveTab([tpl]);
+                global.CONFIG.MeasuredTemplate.documentClass.mockClear();
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
+                    expect.objectContaining({ t: "circle", distance: 7 }), expect.anything()
+                );
             });
 
             it("pending-move row gets stp-pending-move class on reopen", async () => {

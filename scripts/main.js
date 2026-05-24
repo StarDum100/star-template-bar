@@ -113,19 +113,36 @@ async function pickNewPosition(templateData) {
         const prevCursor = document.body.style.cursor;
         document.body.style.cursor = "crosshair";
 
-        const { t, distance, angle, width, fillColor } = templateData;
+        const { t, fillColor, borderColor } = templateData;
+        const f = templateData.flags?.[MODULE_ID] ?? {};
         const { x: startX, y: startY } = canvas.mousePosition;
+
+        let distance, angle, width, direction;
+        if (f.distance != null || f.width != null || f.height != null) {
+            const fd = f.distance ?? 20;
+            const fw = f.width    ?? fd;
+            const fh = f.height;
+            distance  = t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
+            angle     = f.angle ?? 53.13;
+            width     = Math.max(5, fw ?? fd);
+            direction = t === "rect" ? 45 : 0;
+        } else {
+            distance  = templateData.distance;
+            angle     = templateData.angle;
+            width     = templateData.width;
+            direction = templateData.direction;
+        }
 
         const doc = new CONFIG.MeasuredTemplate.documentClass({
             t,
-            x:         startX,
-            y:         startY,
-            distance:  Math.max(5, distance),
-            angle:     angle ?? 53.13,
-            width:     Math.max(5, width ?? distance),
-            direction: t === "rect" ? 45 : 0,
+            x:          startX,
+            y:          startY,
+            distance,
+            angle,
+            width,
+            direction,
             fillColor,
-            borderColor: fillColor,
+            borderColor: borderColor ?? fillColor,
             user: game.user.id,
         }, { parent: canvas.scene });
 
@@ -177,7 +194,7 @@ function templateDistanceFt(t) {
     return Math.round(t.distance * gridDistance);
 }
 
-function buildMoveContent(templates, pendingMoves) {
+function buildMoveContent(templates, pendingMoveOriginals) {
     const gridDistance = canvas?.scene?.grid?.distance ?? 1;
     const rows = templates.map(t => {
         const f         = t.flags?.[MODULE_ID] ?? {};
@@ -195,7 +212,7 @@ function buildMoveContent(templates, pendingMoves) {
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
         }
-        const moved = pendingMoves.has(t.id);
+        const moved = pendingMoveOriginals.has(t.id);
         return `
             <tr data-id="${escapeHtml(t.id)}"${moved ? ' class="stp-pending-move"' : ''}>
                 <td>${name}</td>
@@ -449,7 +466,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     let originalPosition     = resumeState?.originalPosition     ?? null;
     const pendingRemovals         = resumeState?.pendingRemovals         ?? [];
     const pendingRemovalOriginals = resumeState?.pendingRemovalOriginals ?? new Map();
-    const pendingMoves            = resumeState?.pendingMoves            ?? new Map();
+    const pendingMoveOriginals     = resumeState?.pendingMoveOriginals     ?? new Map();
 
     let moveRequested = null;
 
@@ -555,10 +572,6 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
                     await game.user.setFlag(MODULE_ID, "barGrid", pendingGrid);
-                    for (const [id, pos] of pendingMoves) {
-                        const tpl = canvas?.scene?.templates?.get(id);
-                        if (tpl) await tpl.update(pos);
-                    }
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
@@ -581,7 +594,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 if (templates.length === 0) {
                     movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
                 } else {
-                    movePanelEl.html(buildMoveContent(templates, pendingMoves));
+                    movePanelEl.html(buildMoveContent(templates, pendingMoveOriginals));
                 }
             }
 
@@ -753,12 +766,19 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     if (moveRequested) {
         const tpl = canvas?.scene?.templates?.get(moveRequested);
         if (tpl) {
+            const origX = tpl.x;
+            const origY = tpl.y;
             const newPos = await pickNewPosition(tpl.toObject());
-            if (newPos) pendingMoves.set(moveRequested, newPos);
+            if (newPos) {
+                if (!pendingMoveOriginals.has(moveRequested)) {
+                    pendingMoveOriginals.set(moveRequested, { x: origX, y: origY });
+                }
+                await tpl.update(newPos);
+            }
         }
         await openConfig(bar, "move", {
             pendingCustom, pendingGrid, pendingRemovals, pendingRemovalOriginals,
-            pendingMoves, pendingResetPosition, originalPosition,
+            pendingMoveOriginals, pendingResetPosition, originalPosition,
         });
         return;
     }
@@ -779,6 +799,10 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 };
             }
             await canvas?.scene?.createEmbeddedDocuments("MeasuredTemplate", [createData], { keepId: true });
+        }
+        for (const [id, origPos] of pendingMoveOriginals) {
+            const tpl = canvas?.scene?.templates?.get(id);
+            if (tpl) await tpl.update(origPos);
         }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();
