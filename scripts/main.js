@@ -154,6 +154,42 @@ function pickNewPosition(templateData) {
     });
 }
 
+function templateToCreateData(raw) {
+    const f = raw.flags?.[MODULE_ID] ?? {};
+    let distance, width, direction, flags;
+    if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
+        const fd = f.distance ?? 20;
+        const fw = f.width    ?? fd;
+        const fh = f.height;
+        distance  = raw.t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
+        width     = Math.max(5, fw ?? fd);
+        direction = raw.t === "rect" ? 45 : (raw.direction ?? 0);
+        flags     = raw.flags;
+    } else {
+        distance  = raw.distance / gridDist();
+        width     = raw.t === "rect"
+            ? (raw.width ? raw.width / gridWidthScale() : distance)
+            : (raw.width ?? 0) / gridWidthScale();
+        direction = raw.direction ?? 0;
+        const safeFlags = { ...(raw.flags ?? {}) };
+        if (raw.t === "rect" && Math.abs((raw.direction ?? 0) - 45) < 1 && !f._nonModuleRect) {
+            const side = Math.round(distance / Math.SQRT2);
+            safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), width: side, height: side, _nonModuleRect: true };
+        } else if (raw.t !== "rect") {
+            const stored = { distance: Math.round(distance), _nonModule: true };
+            if (raw.t === "ray")  stored.width = Math.round(width);
+            if (raw.t === "cone") stored.angle = Math.round(raw.angle ?? 53.13);
+            safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), ...stored };
+        }
+        flags = safeFlags;
+    }
+    return {
+        t: raw.t, distance, angle: f.angle ?? raw.angle, width,
+        direction, fillColor: raw.fillColor, borderColor: raw.borderColor,
+        user: raw.user, flags, x: raw.x, y: raw.y,
+    };
+}
+
 function templateOwnerName(t) {
     return t.user?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
 }
@@ -530,8 +566,8 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             pendingRemovals.push(id);
             const stagedTpl = canvas?.scene?.templates?.get(id);
             if (stagedTpl) {
-                pendingRemovalOriginals.set(id, stagedTpl.hidden ?? false);
-                await canvas.scene.updateEmbeddedDocuments("MeasuredTemplate", [{ _id: id, hidden: true }]);
+                pendingRemovalOriginals.set(id, templateToCreateData(stagedTpl.toObject()));
+                await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [id]);
             }
             row.remove();
             if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
@@ -690,9 +726,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     const $html = $(dialog.element);
                     await game.user.setFlag(MODULE_ID, "customTemplates", pendingCustom);
                     await game.user.setFlag(MODULE_ID, "barGrid", pendingGrid);
-                    if (pendingRemovals.length) {
-                        await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", pendingRemovals);
-                    }
+
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
@@ -736,51 +770,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             const newPos = await pickNewPosition(raw);
             if (newPos) {
                 const roundedPos = { x: Math.round(newPos.x), y: Math.round(newPos.y) };
-                // Foundry v14 multiplies distance/width by grid.distance at creation time,
-                // so we must pass the original un-scaled values to avoid doubling the size.
-                const f        = raw.flags?.[MODULE_ID] ?? {};
-                let distance, width, direction, flags;
-                if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
-                    // Module template: reconstruct original inputs from flags
-                    const fd = f.distance ?? 20;
-                    const fw = f.width    ?? fd;
-                    const fh = f.height;
-                    distance  = raw.t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
-                    width     = Math.max(5, fw ?? fd);
-                    direction = raw.t === "rect" ? 45 : (raw.direction ?? 0);
-                    flags     = raw.flags;
-                } else {
-                    // Non-module template: undo v14's scaling before recreating.
-                    // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
-                    distance  = raw.distance / gridDist();
-                    // For rects width=0 would make the template invisible, so fall back to distance.
-                    // For rays and other types, preserve the original width.
-                    width     = raw.t === "rect"
-                        ? (raw.width ? raw.width / gridWidthScale() : distance)
-                        : (raw.width ?? 0) / gridWidthScale();
-                    direction = raw.direction ?? 0;
-                    const safeFlags = { ...(raw.flags ?? {}) };
-                    if (raw.t === "rect" && Math.abs((raw.direction ?? 0) - 45) < 1 && !f._nonModuleRect) {
-                        // Direction-45 rect: store side lengths. _nonModuleRect prevents the module
-                        // path from applying an extra ×√2 on subsequent moves.
-                        const side = Math.round(distance / Math.SQRT2);
-                        safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), width: side, height: side, _nonModuleRect: true };
-                    } else if (raw.t !== "rect") {
-                        // Circle, cone, ray: store computed ft values so the move tab displays them
-                        // cleanly. _nonModule sentinel ensures subsequent moves always use the
-                        // non-module path (preserving small widths without Math.max(5,...) clamping).
-                        const stored = { distance: Math.round(distance), _nonModule: true };
-                        if (raw.t === "ray")  stored.width = Math.round(width);
-                        if (raw.t === "cone") stored.angle = Math.round(raw.angle ?? 53.13);
-                        safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), ...stored };
-                    }
-                    flags = safeFlags;
-                }
-                const origData = pendingMoveOriginals.get(moveRequested) ?? {
-                    t: raw.t, distance, angle: f.angle ?? raw.angle, width,
-                    direction, fillColor: raw.fillColor, borderColor: raw.borderColor,
-                    user: raw.user, flags, x: raw.x, y: raw.y,
-                };
+                const origData = pendingMoveOriginals.get(moveRequested) ?? templateToCreateData(raw);
                 const createData = { ...origData, x: roundedPos.x, y: roundedPos.y };
                 await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
                 pendingMoveOriginals.delete(moveRequested);
@@ -798,8 +788,8 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     }
 
     if (!saved) {
-        for (const [id, wasHidden] of pendingRemovalOriginals) {
-            await canvas.scene.updateEmbeddedDocuments("MeasuredTemplate", [{ _id: id, hidden: wasHidden }]);
+        for (const origData of pendingRemovalOriginals.values()) {
+            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
         }
         for (const [newId, origData] of pendingMoveOriginals) {
             await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);

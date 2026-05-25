@@ -872,22 +872,14 @@ describe("Star Template Placer", () => {
                 expect(html.find(".stp-move-template-btn")).toHaveLength(2);
             });
 
-            it("hides the template immediately when delete button is clicked", async () => {
+            it("deletes the template immediately when delete button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                expect(global.canvas.scene.updateEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate", [expect.objectContaining({ _id: "t1", hidden: true })]
+                expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", ["t1"]
                 );
-            });
-
-            it("does not delete the template immediately when delete button is clicked", async () => {
-                const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                const { html } = openConfigOnMoveTab([tpl]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
-                expect(global.canvas.scene.deleteEmbeddedDocuments).not.toHaveBeenCalled();
             });
 
             async function deleteAndCancel(tpl) {
@@ -895,45 +887,76 @@ describe("Star Template Placer", () => {
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
-                global.canvas.scene.updateEmbeddedDocuments.mockClear();
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await new Promise(r => setTimeout(r, 0));
             }
 
-            it("restores original hidden state on Cancel (was visible)", async () => {
+            it("recreates the template at its original position on Cancel", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 await deleteAndCancel(tpl);
-                expect(global.canvas.scene.updateEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate", [expect.objectContaining({ _id: "t1", hidden: false })]
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ t: "circle", x: 100, y: 100, fillColor: "#ff4400" })]
                 );
             });
 
-            it("restores original hidden state on Cancel (was already hidden)", async () => {
-                const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                tpl.hidden = true;
+            it("recreated template uses unscaled distance for non-module template on Cancel", async () => {
+                // stored distance=100, gridDist=5 → createEmbeddedDocuments should receive 100/5=20
+                const tpl = makeTemplate("t1", "user-001", "circle", 100);
                 await deleteAndCancel(tpl);
-                expect(global.canvas.scene.updateEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate", [expect.objectContaining({ _id: "t1", hidden: true })]
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ distance: 20 })]
                 );
             });
 
-            it("actually deletes the template when Save is clicked", async () => {
+            it("recreated template uses flag distance for module template on Cancel", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 100);
+                tpl.toObject.mockReturnValue({
+                    t: "circle", distance: 100, x: 100, y: 100,
+                    fillColor: "#ff4400", borderColor: "#ff4400", user: "user-001",
+                    flags: { "star-template-placer": { distance: 30 } },
+                });
+                await deleteAndCancel(tpl);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ distance: 30 })]
+                );
+            });
+
+            it("recreated template preserves module flags on Cancel", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.toObject.mockReturnValue({
+                    fillColor: "#ff4400", borderColor: "#ff4400", t: "circle", distance: 4,
+                    x: 100, y: 100, hidden: false, user: "user-001",
+                    flags: { "star-template-placer": { name: "Fireball", distance: 20 } },
+                });
+                await deleteAndCancel(tpl);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({
+                        flags: expect.objectContaining({
+                            "star-template-placer": expect.objectContaining({ name: "Fireball", distance: 20 }),
+                        }),
+                    })]
+                );
+            });
+
+            it("does not call deleteEmbeddedDocuments again on Save (already deleted on click)", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html, options } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
+                global.canvas.scene.deleteEmbeddedDocuments.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
-                expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenCalledWith(
-                    "MeasuredTemplate", ["t1"]
-                );
+                expect(global.canvas.scene.deleteEmbeddedDocuments).not.toHaveBeenCalled();
             });
 
             it("pending-deleted template does not reappear when Move tab is re-entered", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
                 html.find("[data-tab='templates']").trigger("click");
                 html.find("[data-tab='move']").trigger("click");
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
@@ -972,9 +995,7 @@ describe("Star Template Placer", () => {
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
                 await new Promise(r => setTimeout(r, 0));
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
-                expect(global.canvas.scene.updateEmbeddedDocuments).not.toHaveBeenCalledWith(
-                    "MeasuredTemplate", [expect.objectContaining({ hidden: true })]
-                );
+                expect(global.canvas.scene.deleteEmbeddedDocuments).not.toHaveBeenCalled();
             });
 
             describe("XSS in template data", () => {
