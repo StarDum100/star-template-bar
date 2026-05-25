@@ -206,9 +206,16 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}°` : "—";
         let distCell;
         if (t.t === "rect") {
-            distCell = (f.width != null && f.height != null)
-                ? `${f.width}ft × ${f.height}ft`
-                : `${templateDistanceFt(t)}ft`;
+            if (f.width != null && f.height != null) {
+                distCell = `${Math.round(f.width)}ft × ${Math.round(f.height)}ft`;
+            } else {
+                // templateDistanceFt returns the diagonal for direction-45 rects; convert to side length.
+                const dist = templateDistanceFt(t);
+                const side = Math.abs((t.direction ?? 0) - 45) < 1
+                    ? Math.round(dist / Math.SQRT2)
+                    : dist;
+                distCell = `${side}ft`;
+            }
         } else if (t.t === "ray") {
             const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
             const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
@@ -809,8 +816,11 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     // Strip system-specific flags (dnd5e, pf2e, etc.) so their
                     // preCreate hooks don't recompute distance from their own dimensions.
                     distance  = raw.distance / gridDist;
-                    // If width is null/0, fall back to distance so rect templates stay visible.
-                    width     = raw.width ? raw.width / gridDist : distance;
+                    // For rects width=0 would make the template invisible, so fall back to distance.
+                    // For other types (rays etc.) preserve the original width rather than inheriting distance.
+                    width     = raw.t === "rect"
+                        ? (raw.width ? raw.width / gridDist : distance)
+                        : (raw.width ?? 0) / gridDist;
                     direction = raw.direction ?? 0;
                     const safeFlags = {};
                     if (raw.flags?.core)       safeFlags.core       = raw.flags.core;

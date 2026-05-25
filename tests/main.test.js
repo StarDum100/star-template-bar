@@ -693,6 +693,14 @@ describe("Star Template Placer", () => {
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 15ft");
             });
 
+            it("ray with width=0 shows 0ft width, not distance", () => {
+                // width=0 should not fall back to distance (that's only for rects)
+                const tpl = makeTemplate("t1", "user-001", "ray", 100);
+                tpl.width = 0;
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 0ft");
+            });
+
             it("shows distance × width for ray templates from flags", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 4);
                 tpl.flags = { "star-template-placer": { distance: 100, width: 5 } };
@@ -708,10 +716,20 @@ describe("Star Template Placer", () => {
             });
 
             it("shows computed distance for rect when flags are absent", () => {
-                // stored=100, gridDist=5 → 20ft
+                // stored=100, gridDist=5 → 20ft; direction=0 so no √2 correction
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 const { html } = openConfigOnMoveTab([tpl]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
+            });
+
+            it("shows side length for direction-45 rect when flags are absent", () => {
+                // stored=100, gridDist=5 → dist=20 → side=round(20/√2)=14ft
+                const tpl = makeTemplate("t1", "user-001", "rect", 100);
+                tpl.direction = 45;
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe(
+                    `${Math.round(20 / Math.SQRT2)}ft`
+                );
             });
 
             it("shows angle in degrees for cone templates", () => {
