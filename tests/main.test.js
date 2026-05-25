@@ -141,6 +141,7 @@ function setupBar(flagOverrides = {}) {
     global.game.user.isGM = false;
     global.game.user.getFlag.mockImplementation((ns, key) => flagsOnly[key] ?? undefined);
     global.game.settings.get.mockImplementation((ns, key) => key === "barHidden" ? (barHidden ?? false) : false);
+    global.canvas.scene.grid = { size: 100, distance: 5 };
     global.canvas.scene.templates.contents = [];
     global.canvas.scene.templates.get = jest.fn(id =>
         global.canvas.scene.templates.contents.find(t => t.id === id)
@@ -940,6 +941,47 @@ describe("Star Template Placer", () => {
                 );
             });
 
+            it("recreated cone preserves its angle on Cancel", async () => {
+                const tpl = makeTemplate("t1", "user-001", "cone", 100);
+                tpl.toObject.mockReturnValue({
+                    t: "cone", distance: 100, angle: 75, x: 100, y: 100,
+                    fillColor: "#ff4400", borderColor: "#ff4400", user: "user-001", flags: {},
+                });
+                await deleteAndCancel(tpl);
+                // non-module cone: distance 100/gridDist(5)=20, angle preserved at 75 (top-level and flag)
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({
+                        t: "cone", angle: 75,
+                        flags: expect.objectContaining({
+                            "star-template-placer": expect.objectContaining({ distance: 20, angle: 75, _nonModule: true }),
+                        }),
+                    })]
+                );
+            });
+
+            it("continues restoring remaining templates if one recreation fails on Cancel", async () => {
+                const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+                const { html } = openConfigOnMoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-001", "circle", 6),
+                ]);
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
+                global.canvas.scene.createEmbeddedDocuments
+                    .mockRejectedValueOnce(new Error("permission denied"))
+                    .mockResolvedValue([]);
+                global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                await new Promise(r => setTimeout(r, 0));
+                // Both deleted templates attempted despite the first rejection
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
+                expect(errSpy).toHaveBeenCalled();
+                errSpy.mockRestore();
+            });
+
             it("does not call deleteEmbeddedDocuments again on Save (already deleted on click)", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html, options } = openConfigOnMoveTab([tpl]);
@@ -1011,6 +1053,52 @@ describe("Star Template Placer", () => {
                     openConfigOnMoveTab([makeTemplate("t1", "user-001", "<script>window.__xssType=true</script>", 4)]);
                     expect(window.__xssType).toBeUndefined();
                 });
+
+                it("does not execute a script tag in the template name flag", () => {
+                    window.__xssNameFlag = undefined;
+                    const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                    tpl.flags = { "star-template-placer": { name: "<script>window.__xssNameFlag=true</script>" } };
+                    openConfigOnMoveTab([tpl]);
+                    expect(window.__xssNameFlag).toBeUndefined();
+                });
+
+                it("does not execute an img onerror payload in the template name flag", () => {
+                    window.__xssNameImg = undefined;
+                    const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                    tpl.flags = { "star-template-placer": { name: '<img src=x onerror="window.__xssNameImg=true">' } };
+                    openConfigOnMoveTab([tpl]);
+                    expect(window.__xssNameImg).toBeUndefined();
+                });
+
+                it("sanitizes a malicious fillColor in the move tab swatch (CSS injection)", () => {
+                    const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                    tpl.fillColor = "red;background:url(http://evil/?leak)";
+                    const { html } = openConfigOnMoveTab([tpl]);
+                    const style = html.find('[data-panel="move"] .stp-color-swatch').attr("style");
+                    expect(style).not.toContain("evil");
+                    expect(style).toContain("#000000");
+                });
+
+                it("preserves a valid hex fillColor in the move tab swatch", () => {
+                    const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                    tpl.fillColor = "#abcdef";
+                    const { html } = openConfigOnMoveTab([tpl]);
+                    expect(html.find('[data-panel="move"] .stp-color-swatch').attr("style")).toContain("#abcdef");
+                });
+            });
+
+            it("computes a sane ray width when grid.distance is 0 (gridless scene)", () => {
+                setupBar();
+                global.canvas.scene.grid = { size: 100, distance: 0 };
+                const tpl = makeTemplate("t1", "user-001", "ray", 100);
+                tpl.width = 100;
+                global.canvas.scene.templates.contents = [tpl];
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find("[data-tab='move']").trigger("click");
+                const sizeCell = html.find('[data-panel="move"] tbody td').eq(3).text();
+                expect(sizeCell).not.toContain("Infinity");
+                expect(sizeCell).toBe("20ft × 1ft");
             });
         });
 
@@ -1341,6 +1429,60 @@ describe("Star Template Placer", () => {
                 inst2.element = container2;
                 options2.render(new Event("render"), inst2);
                 expect($(container2).find("tr.stp-pending-move")).toHaveLength(1);
+            });
+
+            it("moving a non-module cone stores angle and distance as module flags", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "cone", 100);
+                tpl.toObject.mockReturnValue({
+                    t: "cone", distance: 100, width: 0, angle: 60, direction: 0,
+                    x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400", flags: {},
+                });
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // distance 100 → gridDist 5 → 20; angle preserved at 60
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({
+                        flags: expect.objectContaining({
+                            "star-template-placer": expect.objectContaining({ distance: 20, angle: 60, _nonModule: true }),
+                        }),
+                    })]
+                );
+            });
+
+            it("Cancel rolls back both a deletion and a move together", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                openConfigOnMoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-001", "circle", 6),
+                ]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                // Delete t1
+                localHtml.find('tr[data-id="t1"] .stp-remove-template-btn').trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                // Move t2 (closes dialog, reopens after canvas click)
+                localHtml.find('tr[data-id="t2"] .stp-move-template-btn').trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // Reopened dialog is open; Cancel
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
+                global.canvas.scene.deleteEmbeddedDocuments.mockClear();
+                global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                await new Promise(r => setTimeout(r, 0));
+                // Rollback recreates the deleted t1 AND restores the moved t2's original
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
+                // The moved template's new copy is deleted as part of the move rollback
+                expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenCalled();
+                // Original t2 restored at its starting position
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
+                );
             });
         });
     });

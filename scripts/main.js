@@ -8,13 +8,18 @@ function escapeHtml(str) {
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function cssColor(value, fallback = "#000000") {
+    return /^#[0-9a-fA-F]{3,8}$/.test(String(value)) ? String(value) : fallback;
 }
 
 const TEMPLATE_TYPES = ["circle", "cone", "ray", "rect"];
 
 function gridDist()       { return (canvas?.scene?.grid?.size ?? 100) / 20; }
-function gridWidthScale() { return (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1); }
+function gridWidthScale() { return (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance || 1); }
 
 function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
@@ -190,6 +195,10 @@ function templateToCreateData(raw) {
     };
 }
 
+function canManageTemplate(t) {
+    return game.user.isGM || (t.user?.id ?? t.user) === game.user.id;
+}
+
 function templateOwnerName(t) {
     return t.user?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
 }
@@ -203,7 +212,7 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         const f         = t.flags?.[MODULE_ID] ?? {};
         const name      = escapeHtml(String(f.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
-        const safeColor = escapeHtml(String(t.fillColor ?? "#000000"));
+        const safeColor = cssColor(t.fillColor);
         const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}°` : "—";
         let distCell;
         if (t.t === "rect") {
@@ -321,7 +330,7 @@ function renderCustomButtons(bar, overrides = {}) {
 function makeCustomRow(tpl, index) {
     const safeName  = escapeHtml(tpl.name);
     const safeType  = escapeHtml(tpl.t);
-    const safeColor = escapeHtml(tpl.fillColor);
+    const safeColor = cssColor(tpl.fillColor);
     const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft`
                    : tpl.t === "rect" ? `${tpl.width ?? 5}ft × ${tpl.height ?? 5}ft`
                    : "—";
@@ -493,7 +502,6 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     let saved                = false;
     let pendingResetPosition = resumeState?.pendingResetPosition ?? false;
     let originalPosition     = resumeState?.originalPosition     ?? null;
-    const pendingRemovals         = resumeState?.pendingRemovals         ?? [];
     const pendingRemovalOriginals = resumeState?.pendingRemovalOriginals ?? new Map();
     const pendingMoveOriginals     = resumeState?.pendingMoveOriginals     ?? new Map();
 
@@ -509,8 +517,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     function renderMoveTab($html) {
         const movePanelEl = $html.find('[data-panel="move"]');
         const templates = (canvas?.scene?.templates?.contents ?? [])
-            .filter(t => !pendingRemovals.includes(t.id))
-            .filter(t => game.user.isGM || (t.user?.id ?? t.user) === game.user.id);
+            .filter(canManageTemplate);
         if (templates.length === 0) {
             movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
         } else {
@@ -563,7 +570,6 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         $html.on("click", ".stp-remove-template-btn", async (e) => {
             const row = $(e.currentTarget).closest("tr");
             const id  = row.attr("data-id");
-            pendingRemovals.push(id);
             const stagedTpl = canvas?.scene?.templates?.get(id);
             if (stagedTpl) {
                 pendingRemovalOriginals.set(id, templateToCreateData(stagedTpl.toObject()));
@@ -781,7 +787,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             }
         }
         await openConfig(bar, "move", {
-            pendingCustom, pendingGrid, pendingRemovals, pendingRemovalOriginals,
+            pendingCustom, pendingGrid, pendingRemovalOriginals,
             pendingMoveOriginals, pendingResetPosition, originalPosition,
         });
         return;
@@ -789,11 +795,19 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
 
     if (!saved) {
         for (const origData of pendingRemovalOriginals.values()) {
-            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+            try {
+                await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+            } catch (err) {
+                console.error(`${MODULE_TITLE} | Failed to restore a deleted template on cancel.`, err);
+            }
         }
         for (const [newId, origData] of pendingMoveOriginals) {
-            await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);
-            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+            try {
+                await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);
+                await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+            } catch (err) {
+                console.error(`${MODULE_TITLE} | Failed to restore a moved template on cancel.`, err);
+            }
         }
         if (pendingResetPosition) bar.css(originalPosition);
         if (barHidden) bar.hide();
@@ -846,9 +860,7 @@ Hooks.once("ready", () => {
             ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
             return;
         }
-        const movable = canvas.scene.templates.contents.filter(
-            t => game.user.isGM || (t.user?.id ?? t.user) === game.user.id
-        );
+        const movable = canvas.scene.templates.contents.filter(canManageTemplate);
         if (movable.length === 0) {
             ui.notifications.warn(`${MODULE_TITLE}: No templates to move.`);
             return;
