@@ -1,4 +1,3 @@
-(function () {
 const MODULE_ID = "star-template-placer";
 const MODULE_TITLE = "Star Template Placer";
 
@@ -892,5 +891,3 @@ Hooks.once("ready", () => {
     });
 });
 
-if (typeof module !== "undefined") module.exports = {};
-})();

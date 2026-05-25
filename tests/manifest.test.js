@@ -26,7 +26,7 @@ describe("module.json", () => {
     });
 
     it("lists the main script", () => {
-        expect(manifest.scripts).toContain("scripts/main.js");
+        expect(manifest.esmodules).toContain("scripts/main.js");
     });
 
     it("lists the stylesheet", () => {

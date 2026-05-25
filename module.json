@@ -12,7 +12,7 @@
     "minimum": "14",
     "verified": "14"
   },
-  "scripts": [
+  "esmodules": [
     "scripts/main.js"
   ],
   "styles": [
