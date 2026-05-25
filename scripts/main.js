@@ -24,7 +24,7 @@ function getBarGrid(customTemplates = getCustomTemplates()) {
     return [customTemplates.map(t => t.name)];
 }
 
-async function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
+function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     if (!canvas?.scene) {
         ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
         return;
@@ -108,7 +108,7 @@ async function placeTemplate({ t, distance, angle, width, height, fillColor, nam
     });
 }
 
-async function pickNewPosition(templateData) {
+function pickNewPosition(templateData) {
     if (!canvas?.scene) return null;
 
     return new Promise((resolve) => {
@@ -170,7 +170,7 @@ async function pickNewPosition(templateData) {
             template.refresh?.();
         };
 
-        const onPlace = (e) => {
+        const onPlace = () => {
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
@@ -190,7 +190,7 @@ async function pickNewPosition(templateData) {
 }
 
 function templateOwnerName(t) {
-    return t.author?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
+    return game.users?.get(t.user)?.name ?? "Unknown";
 }
 
 function templateDistanceFt(t) {
@@ -199,7 +199,6 @@ function templateDistanceFt(t) {
 }
 
 function buildMoveContent(templates, pendingMoveOriginals) {
-    const gridDistance = canvas?.scene?.grid?.distance ?? 1;
     const rows = templates.map(t => {
         const f         = t.flags?.[MODULE_ID] ?? {};
         const name      = escapeHtml(String(f.name ?? ""));
@@ -804,9 +803,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     direction = raw.t === "rect" ? 45 : (raw.direction ?? 0);
                     flags     = raw.flags;
                 } else {
-                    // Non-module template: undo v14's grid.distance scaling.
-                    // Strip system-specific flags (dnd5e, pf2e, etc.) so their
-                    // preCreate hooks don't recompute distance from their own dimensions.
+                    // Non-module template: undo v14's scaling before recreating.
                     // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
                     const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
                     distance  = raw.distance / gridDist;

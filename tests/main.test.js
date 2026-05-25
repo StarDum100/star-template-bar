@@ -681,17 +681,10 @@ describe("Star Template Placer", () => {
                 expect(html.find('[data-panel="move"] tbody td').eq(0).text()).toBe("");
             });
 
-            it("shows the owner name via template.author", () => {
-                const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                tpl.author = { name: "Gandalf" };
-                const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Gandalf");
-            });
-
-            it("falls back to game.users when author is absent", () => {
-                global.game.users.get.mockReturnValue({ name: "Saruman" });
+            it("shows the owner name via game.users", () => {
+                global.game.users.get.mockReturnValue({ name: "Gandalf" });
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Saruman");
+                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Gandalf");
             });
 
             it("shows 'Unknown' when neither author nor game.users resolves", () => {
