@@ -26,37 +26,11 @@ function getBarGrid(customTemplates = getCustomTemplates()) {
     return [customTemplates.map(t => t.name)];
 }
 
-function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
-    if (!canvas?.scene) {
-        ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
-        return;
-    }
-
-    const effectiveDistance = (t === "rect") ? (height ?? width) * Math.SQRT2 : distance;
-    const templateData = {
-        t,
-        distance:    Math.max(5, effectiveDistance),
-        angle:       angle ?? 53.13,
-        width:       Math.max(5, width ?? distance),
-        direction:   t === "rect" ? 45 : 0,
-        fillColor,
-        borderColor: fillColor,
-        user:        game.user.id,
-    };
+function withPlacementListeners(template, onPlaceCb) {
+    const prevCursor = document.body.style.cursor;
+    document.body.style.cursor = "crosshair";
 
     return new Promise((resolve) => {
-        const { x: startX, y: startY } = canvas.mousePosition;
-        const prevCursor = document.body.style.cursor;
-        document.body.style.cursor = "crosshair";
-
-        const doc = new CONFIG.MeasuredTemplate.documentClass({
-            ...templateData, x: startX, y: startY,
-        }, { parent: canvas.scene });
-
-        const template = new CONFIG.MeasuredTemplate.objectClass(doc);
-        canvas.templates.preview.addChild(template);
-        template.draw?.().catch?.(() => {});
-
         const cleanup = () => {
             canvas.templates.preview.removeChild(template);
             template.destroy?.({ children: true });
@@ -75,100 +49,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
 
         const onPlace = async () => {
             cleanup();
-            const { x: rawX, y: rawY } = canvas.mousePosition;
-            const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
-            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
-                ...templateData, x, y,
-                flags: {
-                    [MODULE_ID]: {
-                        ...(name     ? { name }     : {}),
-                        ...(distance != null ? { distance } : {}),
-                        ...(angle    != null ? { angle }    : {}),
-                        ...(width    != null ? { width }    : {}),
-                        ...(height   != null ? { height }   : {}),
-                    }
-                },
-            }]);
-            resolve();
-        };
-
-        const onCancel = (e) => {
-            if (e.key !== "Escape") return;
-            cleanup();
-            resolve();
-        };
-
-        window.addEventListener("pointermove", onMove);
-        window.addEventListener("pointerdown", onPlace, { capture: true });
-        window.addEventListener("keydown", onCancel);
-    });
-}
-
-function pickNewPosition(templateData) {
-    if (!canvas?.scene) return null;
-
-    return new Promise((resolve) => {
-        const prevCursor = document.body.style.cursor;
-        document.body.style.cursor = "crosshair";
-
-        const { _id, x: _x, y: _y, user: _user, ...baseData } = templateData;
-        const { t } = baseData;
-        const f = templateData.flags?.[MODULE_ID] ?? {};
-        const { x: startX, y: startY } = canvas.mousePosition;
-
-        let overrides = {};
-        if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
-            const fd = f.distance ?? 20;
-            const fw = f.width    ?? fd;
-            const fh = f.height;
-            overrides = {
-                distance:  t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd),
-                angle:     f.angle ?? 53.13,
-                width:     Math.max(5, fw ?? fd),
-                direction: t === "rect" ? 45 : 0,
-            };
-        } else {
-            // Non-module template: undo v14's grid.size/20 scaling for a correctly sized preview.
-            // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
-            overrides = {
-                distance: baseData.distance / gridDist(),
-                width:    baseData.width ? baseData.width / gridWidthScale() : baseData.distance / gridDist(),
-            };
-        }
-
-        const doc = new CONFIG.MeasuredTemplate.documentClass({
-            ...baseData,
-            ...overrides,
-            x:    startX,
-            y:    startY,
-            user: game.user.id,
-        }, { parent: canvas.scene });
-
-        const template = new CONFIG.MeasuredTemplate.objectClass(doc);
-        canvas.templates.preview.addChild(template);
-        template.draw?.().catch?.(() => {});
-
-        const cleanup = () => {
-            canvas.templates.preview.removeChild(template);
-            template.destroy?.({ children: true });
-            window.removeEventListener("pointermove", onMove);
-            window.removeEventListener("pointerdown", onPlace, { capture: true });
-            window.removeEventListener("keydown", onCancel);
-            document.body.style.cursor = prevCursor;
-        };
-
-        const onMove = () => {
-            const { x, y } = canvas.mousePosition;
-            const snapped  = canvas.grid.getSnappedPoint({ x, y });
-            template.document.updateSource({ x: snapped.x, y: snapped.y });
-            template.refresh?.();
-        };
-
-        const onPlace = () => {
-            cleanup();
-            const { x: rawX, y: rawY } = canvas.mousePosition;
-            const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
-            resolve({ x, y });
+            resolve(await onPlaceCb());
         };
 
         const onCancel = (e) => {
@@ -180,6 +61,96 @@ function pickNewPosition(templateData) {
         window.addEventListener("pointermove", onMove);
         window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
+    });
+}
+
+function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
+    if (!canvas?.scene) {
+        ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
+        return;
+    }
+
+    const effectiveDistance = (t === "rect") ? (height ?? width) * Math.SQRT2 : distance;
+    const templateData = {
+        t,
+        distance:    Math.max(5, effectiveDistance),
+        angle:       angle ?? 53.13,
+        width:       Math.max(5, width ?? distance),
+        direction:   t === "rect" ? 45 : 0,
+        fillColor,
+        borderColor: fillColor,
+        user:        game.user.id,
+    };
+
+    const { x: startX, y: startY } = canvas.mousePosition;
+    const doc = new CONFIG.MeasuredTemplate.documentClass({
+        ...templateData, x: startX, y: startY,
+    }, { parent: canvas.scene });
+    const template = new CONFIG.MeasuredTemplate.objectClass(doc);
+    canvas.templates.preview.addChild(template);
+    template.draw?.().catch?.(() => {});
+
+    return withPlacementListeners(template, async () => {
+        const { x: rawX, y: rawY } = canvas.mousePosition;
+        const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
+        await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
+            ...templateData, x, y,
+            flags: {
+                [MODULE_ID]: {
+                    ...(name     ? { name }     : {}),
+                    ...(distance != null ? { distance } : {}),
+                    ...(angle    != null ? { angle }    : {}),
+                    ...(width    != null ? { width }    : {}),
+                    ...(height   != null ? { height }   : {}),
+                }
+            },
+        }]);
+    });
+}
+
+function pickNewPosition(templateData) {
+    if (!canvas?.scene) return null;
+
+    const { _id, x: _x, y: _y, user: _user, ...baseData } = templateData;
+    const { t } = baseData;
+    const f = templateData.flags?.[MODULE_ID] ?? {};
+    const { x: startX, y: startY } = canvas.mousePosition;
+
+    let overrides;
+    if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
+        const fd = f.distance ?? 20;
+        const fw = f.width    ?? fd;
+        const fh = f.height;
+        overrides = {
+            distance:  t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd),
+            angle:     f.angle ?? 53.13,
+            width:     Math.max(5, fw ?? fd),
+            direction: t === "rect" ? 45 : 0,
+        };
+    } else {
+        // Non-module template: undo v14's grid.size/20 scaling for a correctly sized preview.
+        // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
+        overrides = {
+            distance: baseData.distance / gridDist(),
+            width:    baseData.width ? baseData.width / gridWidthScale() : baseData.distance / gridDist(),
+        };
+    }
+
+    const doc = new CONFIG.MeasuredTemplate.documentClass({
+        ...baseData,
+        ...overrides,
+        x:    startX,
+        y:    startY,
+        user: game.user.id,
+    }, { parent: canvas.scene });
+    const template = new CONFIG.MeasuredTemplate.objectClass(doc);
+    canvas.templates.preview.addChild(template);
+    template.draw?.().catch?.(() => {});
+
+    return withPlacementListeners(template, () => {
+        const { x: rawX, y: rawY } = canvas.mousePosition;
+        const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
+        return { x, y };
     });
 }
 
