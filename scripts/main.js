@@ -319,7 +319,7 @@ function renderCustomButtons(bar, overrides = {}) {
                 .addClass("stp-custom-btn")
                 .attr("title", `${tpl.name} (${tpl.t}, ${tpl.distance}ft)`)
                 .text(tpl.name);
-            btn.css("border-left", `3px solid ${tpl.fillColor}`);
+            btn.css("border-left", `3px solid ${cssColor(tpl.fillColor)}`);
             btn.on("click", () => placeTemplate(tpl));
             rowEl.append(btn);
         }
@@ -789,9 +789,15 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 const createData = { ...origData, x: roundedPos.x, y: roundedPos.y };
                 await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
                 pendingMoveOriginals.delete(moveRequested);
-                const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
-                if (newDoc?.id) {
-                    pendingMoveOriginals.set(newDoc.id, origData);
+                try {
+                    const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
+                    if (newDoc?.id) {
+                        pendingMoveOriginals.set(newDoc.id, origData);
+                    }
+                } catch (err) {
+                    // The original was already deleted; recreate it so the move failure doesn't lose the template.
+                    console.error(`${MODULE_TITLE} | Failed to place moved template; restoring original.`, err);
+                    await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
                 }
             }
         }
