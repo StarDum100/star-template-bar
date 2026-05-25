@@ -341,7 +341,7 @@ describe("Star Template Placer", () => {
         it("dialog has a shape select with circle, cone, ray, and rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            const options = [...html.find(".stp-type-select option")].map(o => o.value);
+            const options = [...html.find(".stp-type option")].map(o => o.value);
             expect(options).toContain("circle");
             expect(options).toContain("cone");
             expect(options).toContain("ray");
@@ -351,13 +351,13 @@ describe("Star Template Placer", () => {
         it("dialog has a distance input defaulting to 20", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-distance-input").val()).toBe("20");
+            expect(html.find(".stp-distance").val()).toBe("20");
         });
 
         it("dialog has a color input", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-color-input").length).toBe(1);
+            expect(html.find(".stp-color").length).toBe(1);
         });
 
         it("cone angle row is hidden by default", () => {
@@ -369,15 +369,15 @@ describe("Star Template Placer", () => {
         it("cone angle row shows when shape is changed to cone", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("cone").trigger("change");
+            html.find(".stp-type").val("cone").trigger("change");
             expect(html.find(".stp-cone-row").css("display")).not.toBe("none");
         });
 
         it("cone angle row hides again when shape is changed away from cone", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("cone").trigger("change");
-            html.find(".stp-type-select").val("circle").trigger("change");
+            html.find(".stp-type").val("cone").trigger("change");
+            html.find(".stp-type").val("circle").trigger("change");
             expect(html.find(".stp-cone-row").css("display")).toBe("none");
         });
 
@@ -390,14 +390,14 @@ describe("Star Template Placer", () => {
         it("width row shows when shape is changed to ray", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("ray").trigger("change");
+            html.find(".stp-type").val("ray").trigger("change");
             expect(html.find(".stp-width-row").css("display")).not.toBe("none");
         });
 
         it("width row shows when shape is changed to rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("rect").trigger("change");
+            html.find(".stp-type").val("rect").trigger("change");
             expect(html.find(".stp-width-row").css("display")).not.toBe("none");
         });
 
@@ -410,53 +410,53 @@ describe("Star Template Placer", () => {
         it("height row shows when shape is changed to rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("rect").trigger("change");
+            html.find(".stp-type").val("rect").trigger("change");
             expect(html.find(".stp-height-row").css("display")).not.toBe("none");
         });
 
         it("height row hides when shape is changed away from rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("rect").trigger("change");
-            html.find(".stp-type-select").val("circle").trigger("change");
+            html.find(".stp-type").val("rect").trigger("change");
+            html.find(".stp-type").val("circle").trigger("change");
             expect(html.find(".stp-height-row").css("display")).toBe("none");
         });
 
         it("size row is hidden when shape is rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("rect").trigger("change");
+            html.find(".stp-type").val("rect").trigger("change");
             expect(html.find(".stp-distance-row").css("display")).toBe("none");
         });
 
         it("size row is visible when shape is changed away from rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("rect").trigger("change");
-            html.find(".stp-type-select").val("circle").trigger("change");
+            html.find(".stp-type").val("rect").trigger("change");
+            html.find(".stp-type").val("circle").trigger("change");
             expect(html.find(".stp-distance-row").css("display")).not.toBe("none");
         });
 
         it("width row hides again when shape is changed away from ray", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("ray").trigger("change");
-            html.find(".stp-type-select").val("circle").trigger("change");
+            html.find(".stp-type").val("ray").trigger("change");
+            html.find(".stp-type").val("circle").trigger("change");
             expect(html.find(".stp-width-row").css("display")).toBe("none");
         });
 
         it("width row hides again when shape is changed away from rect", () => {
             document.querySelector(".stp-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type-select").val("rect").trigger("change");
-            html.find(".stp-type-select").val("circle").trigger("change");
+            html.find(".stp-type").val("rect").trigger("change");
+            html.find(".stp-type").val("circle").trigger("change");
             expect(html.find(".stp-width-row").css("display")).toBe("none");
         });
 
         it("passes width to createEmbeddedDocuments for ray", async () => {
             await triggerPlaceFromDialog(html => {
-                html.find(".stp-type-select").val("ray").trigger("change");
-                html.find(".stp-width-input").val("30");
+                html.find(".stp-type").val("ray").trigger("change");
+                html.find(".stp-width").val("30");
             });
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
@@ -466,9 +466,9 @@ describe("Star Template Placer", () => {
 
         it("passes width and height * sqrt(2) for rect distance and stores dimensions in flags", async () => {
             await triggerPlaceFromDialog(html => {
-                html.find(".stp-type-select").val("rect").trigger("change");
-                html.find(".stp-width-input").val("30");
-                html.find(".stp-height-input").val("40");
+                html.find(".stp-type").val("rect").trigger("change");
+                html.find(".stp-width").val("30");
+                html.find(".stp-height").val("40");
             });
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
@@ -511,9 +511,9 @@ describe("Star Template Placer", () => {
             document.querySelector(".stp-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            $(container).find(".stp-type-select").val("rect").trigger("change");
-            $(container).find(".stp-width-input").val("30");
-            $(container).find(".stp-height-input").val("40");
+            $(container).find(".stp-type").val("rect").trigger("change");
+            $(container).find(".stp-width").val("30");
+            $(container).find(".stp-height").val("40");
             global.CONFIG.MeasuredTemplate.documentClass.mockClear();
             const placeBtn = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
@@ -528,8 +528,8 @@ describe("Star Template Placer", () => {
             document.querySelector(".stp-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            $(container).find(".stp-type-select").val("ray").trigger("change");
-            $(container).find(".stp-width-input").val("10");
+            $(container).find(".stp-type").val("ray").trigger("change");
+            $(container).find(".stp-width").val("10");
             global.CONFIG.MeasuredTemplate.documentClass.mockClear();
             const placeBtn = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
@@ -576,7 +576,7 @@ describe("Star Template Placer", () => {
         });
 
         it("clamps distance to minimum 5", async () => {
-            await triggerPlaceFromDialog(html => html.find(".stp-distance-input").val("-10"));
+            await triggerPlaceFromDialog(html => html.find(".stp-distance").val("-10"));
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
                 [expect.objectContaining({ distance: 5 })]
@@ -685,6 +685,13 @@ describe("Star Template Placer", () => {
                 global.game.users.get.mockReturnValue({ name: "Gandalf" });
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Gandalf");
+            });
+
+            it("shows the owner name when t.user is a User document (Foundry v14)", () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.user = { name: "Gamemaster" };
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Gamemaster");
             });
 
             it("shows 'Unknown' when neither author nor game.users resolves", () => {

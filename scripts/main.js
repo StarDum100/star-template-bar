@@ -14,6 +14,9 @@ function escapeHtml(str) {
 
 const TEMPLATE_TYPES = ["circle", "cone", "ray", "rect"];
 
+function gridDist()       { return (canvas?.scene?.grid?.size ?? 100) / 20; }
+function gridWidthScale() { return (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1); }
+
 function getCustomTemplates() {
     return game.user.getFlag(MODULE_ID, "customTemplates") ?? [];
 }
@@ -31,6 +34,16 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     }
 
     const effectiveDistance = (t === "rect") ? (height ?? width) * Math.SQRT2 : distance;
+    const templateData = {
+        t,
+        distance:    Math.max(5, effectiveDistance),
+        angle:       angle ?? 53.13,
+        width:       Math.max(5, width ?? distance),
+        direction:   t === "rect" ? 45 : 0,
+        fillColor,
+        borderColor: fillColor,
+        user:        game.user.id,
+    };
 
     return new Promise((resolve) => {
         const { x: startX, y: startY } = canvas.mousePosition;
@@ -38,16 +51,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
         document.body.style.cursor = "crosshair";
 
         const doc = new CONFIG.MeasuredTemplate.documentClass({
-            t,
-            x:         startX,
-            y:         startY,
-            distance:  Math.max(5, effectiveDistance),
-            angle:     angle ?? 53.13,
-            width:     Math.max(5, width ?? distance),
-            direction: t === "rect" ? 45 : 0,
-            fillColor,
-            borderColor: fillColor,
-            user: game.user.id,
+            ...templateData, x: startX, y: startY,
         }, { parent: canvas.scene });
 
         const template = new CONFIG.MeasuredTemplate.objectClass(doc);
@@ -70,22 +74,15 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
             template.refresh?.();
         };
 
-        const onPlace = async (e) => {
+        const onPlace = async () => {
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
             const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
             await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
-                t, x, y,
-                distance:  Math.max(5, effectiveDistance),
-                angle:     angle ?? 53.13,
-                width:     Math.max(5, width ?? distance),
-                direction: t === "rect" ? 45 : 0,
-                fillColor,
-                borderColor: fillColor,
-                user: game.user.id,
+                ...templateData, x, y,
                 flags: {
                     [MODULE_ID]: {
-                        ...(name ? { name } : {}),
+                        ...(name     ? { name }     : {}),
                         ...(distance != null ? { distance } : {}),
                         ...(angle    != null ? { angle }    : {}),
                         ...(width    != null ? { width }    : {}),
@@ -134,11 +131,9 @@ function pickNewPosition(templateData) {
         } else {
             // Non-module template: undo v14's grid.size/20 scaling for a correctly sized preview.
             // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
-            const gridDist       = (canvas?.scene?.grid?.size ?? 100) / 20;
-            const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
             overrides = {
-                distance: baseData.distance / gridDist,
-                width:    baseData.width ? baseData.width / gridWidthScale : baseData.distance / gridDist,
+                distance: baseData.distance / gridDist(),
+                width:    baseData.width ? baseData.width / gridWidthScale() : baseData.distance / gridDist(),
             };
         }
 
@@ -190,12 +185,11 @@ function pickNewPosition(templateData) {
 }
 
 function templateOwnerName(t) {
-    return game.users?.get(t.user)?.name ?? "Unknown";
+    return t.user?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
 }
 
 function templateDistanceFt(t) {
-    const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
-    return Math.round(t.distance / gridDist);
+    return Math.round(t.distance / gridDist());
 }
 
 function buildMoveContent(templates, pendingMoveOriginals) {
@@ -218,9 +212,8 @@ function buildMoveContent(templates, pendingMoveOriginals) {
                 distCell = `${side}ft`;
             }
         } else if (t.t === "ray") {
-            const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
             const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
-            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridWidthScale)}`;
+            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridWidthScale())}`;
             distCell = `${rayDist}ft × ${rayWidth}ft`;
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
@@ -392,40 +385,69 @@ function reshapeGrid(pendingGrid, numRows, flat = pendingGrid.flat()) {
     }
 }
 
-async function openPlaceDialog() {
+function buildTemplateFormHtml(prefix, color) {
+    const p = `stp-${prefix}`;
     const typeOptions = TEMPLATE_TYPES.map(t =>
         `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
     ).join("");
+    return `
+        <div class="stp-form-row">
+            <label>Shape</label>
+            <select class="${p}type">${typeOptions}</select>
+        </div>
+        <div class="stp-form-row ${p}distance-row">
+            <label>Size (ft)</label>
+            <input type="number" class="${p}distance" value="20" min="5" step="5">
+        </div>
+        <div class="stp-form-row ${p}cone-row" style="display:none">
+            <label>Angle (&deg;)</label>
+            <input type="number" class="${p}angle" value="53.13" min="1" max="360">
+        </div>
+        <div class="stp-form-row ${p}width-row" style="display:none">
+            <label>Width (ft)</label>
+            <input type="number" class="${p}width" value="5" min="5" step="5">
+        </div>
+        <div class="stp-form-row ${p}height-row" style="display:none">
+            <label>Height (ft)</label>
+            <input type="number" class="${p}height" value="20" min="5" step="5">
+        </div>
+        <div class="stp-form-row">
+            <label>Color</label>
+            <input type="color" class="${p}color" value="${escapeHtml(color)}">
+        </div>
+    `;
+}
 
+function wireTypeToggle($html, prefix) {
+    const p = `stp-${prefix}`;
+    $html.on("change", `.${p}type`, (e) => {
+        const type = e.target.value;
+        $html.find(`.${p}cone-row`).toggle(type === "cone");
+        $html.find(`.${p}width-row`).toggle(type === "rect" || type === "ray");
+        $html.find(`.${p}height-row`).toggle(type === "rect");
+        $html.find(`.${p}distance-row`).toggle(type !== "rect");
+    });
+}
+
+function readTemplateForm($html, prefix) {
+    const p = `stp-${prefix}`;
+    return {
+        t:         $html.find(`.${p}type`).val(),
+        distance:  Math.max(5, parseFloat($html.find(`.${p}distance`).val()) || 20),
+        angle:     parseFloat($html.find(`.${p}angle`).val()) || 53.13,
+        width:     Math.max(5, parseFloat($html.find(`.${p}width`).val()) || 5),
+        height:    Math.max(5, parseFloat($html.find(`.${p}height`).val()) || 20),
+        fillColor: $html.find(`.${p}color`).val(),
+    };
+}
+
+async function openPlaceDialog() {
     const rawColor = game.user.color?.css ?? game.user.color ?? "";
     const defaultColor = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : "#ff0000";
 
     const content = `
         <div class="stp-place-form">
-            <div class="stp-form-row">
-                <label>Shape</label>
-                <select class="stp-type-select">${typeOptions}</select>
-            </div>
-            <div class="stp-form-row stp-distance-row">
-                <label>Size (ft)</label>
-                <input type="number" class="stp-distance-input" value="20" min="5" step="5">
-            </div>
-            <div class="stp-form-row stp-cone-row" style="display:none">
-                <label>Angle (&deg;)</label>
-                <input type="number" class="stp-angle-input" value="53.13" min="1" max="360">
-            </div>
-            <div class="stp-form-row stp-width-row" style="display:none">
-                <label>Width (ft)</label>
-                <input type="number" class="stp-width-input" value="5" min="5" step="5">
-            </div>
-            <div class="stp-form-row stp-height-row" style="display:none">
-                <label>Height (ft)</label>
-                <input type="number" class="stp-height-input" value="20" min="5" step="5">
-            </div>
-            <div class="stp-form-row">
-                <label>Color</label>
-                <input type="color" class="stp-color-input" value="${escapeHtml(defaultColor)}">
-            </div>
+            ${buildTemplateFormHtml("", defaultColor)}
         </div>
     `;
 
@@ -440,27 +462,15 @@ async function openPlaceDialog() {
                 action: "place",
                 label: "Place",
                 callback: (event, button, dialog) => {
-                    const $html     = $(dialog.element);
-                    const t         = $html.find(".stp-type-select").val();
-                    const distance  = Math.max(5, parseFloat($html.find(".stp-distance-input").val()) || 20);
-                    const angle     = parseFloat($html.find(".stp-angle-input").val()) || 53.13;
-                    const width     = Math.max(5, parseFloat($html.find(".stp-width-input").val()) || 5);
-                    const height    = Math.max(5, parseFloat($html.find(".stp-height-input").val()) || 20);
-                    const fillColor = $html.find(".stp-color-input").val();
-                    templateConfig  = { t, distance, angle, width, height, fillColor };
+                    const $html    = $(dialog.element);
+                    templateConfig = readTemplateForm($html, "");
                 }
             },
             { action: "cancel", label: "Cancel", default: true }
         ],
         render: (event, dialog) => {
             const $html = $(dialog.element);
-            $html.on("change", ".stp-type-select", (e) => {
-                const type = e.target.value;
-                $html.find(".stp-cone-row").toggle(type === "cone");
-                $html.find(".stp-width-row").toggle(type === "ray" || type === "rect");
-                $html.find(".stp-height-row").toggle(type === "rect");
-                $html.find(".stp-distance-row").toggle(type !== "rect");
-            });
+            wireTypeToggle($html, "");
         }
     });
 
@@ -482,10 +492,6 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     const pendingMoveOriginals     = resumeState?.pendingMoveOriginals     ?? new Map();
 
     let moveRequested = null;
-
-    const typeOptions = TEMPLATE_TYPES.map(t =>
-        `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
-    ).join("");
 
     const tab   = (name) => `stp-tab${name === initialTab ? " stp-tab-active" : ""}`;
     const panel = (name) => `stp-tab-panel${name === initialTab ? "" : " stp-tab-panel-hidden"}`;
@@ -517,30 +523,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                         <label>Name</label>
                         <input type="text" class="stp-new-name" placeholder="e.g. Fireball">
                     </div>
-                    <div class="stp-form-row">
-                        <label>Shape</label>
-                        <select class="stp-new-type">${typeOptions}</select>
-                    </div>
-                    <div class="stp-form-row stp-new-distance-row">
-                        <label>Size (ft)</label>
-                        <input type="number" class="stp-new-distance" value="20" min="5" step="5">
-                    </div>
-                    <div class="stp-form-row stp-new-cone-row" style="display:none">
-                        <label>Angle (&deg;)</label>
-                        <input type="number" class="stp-new-angle" value="53.13" min="1" max="360">
-                    </div>
-                    <div class="stp-form-row stp-new-width-row" style="display:none">
-                        <label>Width (ft)</label>
-                        <input type="number" class="stp-new-width" value="5" min="5" step="5">
-                    </div>
-                    <div class="stp-form-row stp-new-height-row" style="display:none">
-                        <label>Height (ft)</label>
-                        <input type="number" class="stp-new-height" value="20" min="5" step="5">
-                    </div>
-                    <div class="stp-form-row">
-                        <label>Color</label>
-                        <input type="color" class="stp-new-color" value="#ff0000">
-                    </div>
+                    ${buildTemplateFormHtml("new-", "#ff0000")}
                     <button type="button" class="stp-add-btn">Add Template</button>
                 </div>
             </div>
@@ -626,13 +609,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             });
 
             // Type toggle in add form
-            $html.on("change", ".stp-new-type", (e) => {
-                const type = e.target.value;
-                $html.find(".stp-new-cone-row").toggle(type === "cone");
-                $html.find(".stp-new-width-row").toggle(type === "rect" || type === "ray");
-                $html.find(".stp-new-height-row").toggle(type === "rect");
-                $html.find(".stp-new-distance-row").toggle(type !== "rect");
-            });
+            wireTypeToggle($html, "new-");
 
             // Delete a custom template row
             $html.on("click", ".stp-delete-btn", (e) => {
@@ -661,12 +638,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     ui.notifications.warn(`${MODULE_TITLE}: A template named "${escapeHtml(name)}" already exists.`);
                     return;
                 }
-                const t         = $html.find(".stp-new-type").val();
-                const distance  = Math.max(5, parseFloat($html.find(".stp-new-distance").val()) || 20);
-                const angle     = parseFloat($html.find(".stp-new-angle").val()) || 53.13;
-                const width     = Math.max(5, parseFloat($html.find(".stp-new-width").val()) || 5);
-                const height    = Math.max(5, parseFloat($html.find(".stp-new-height").val()) || 20);
-                const fillColor = $html.find(".stp-new-color").val();
+                const { t, distance, angle, width, height, fillColor } = readTemplateForm($html, "new-");
                 pendingCustom.push({ name, t, distance, angle, width, height, fillColor });
                 if (pendingGrid.length === 0) pendingGrid.push([name]);
                 else pendingGrid[pendingGrid.length - 1].push(name);
@@ -789,9 +761,6 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 // Foundry v14 multiplies distance/width by grid.distance at creation time,
                 // so we must pass the original un-scaled values to avoid doubling the size.
                 const f        = raw.flags?.[MODULE_ID] ?? {};
-                // Foundry v14 stores MeasuredTemplate.distance scaled by (grid.size / 20).
-                // To recreate at the same size we must divide the raw stored value by that factor.
-                const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
                 let distance, width, direction, flags;
                 if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
                     // Module template: reconstruct original inputs from flags
@@ -805,13 +774,12 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 } else {
                     // Non-module template: undo v14's scaling before recreating.
                     // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
-                    const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
-                    distance  = raw.distance / gridDist;
+                    distance  = raw.distance / gridDist();
                     // For rects width=0 would make the template invisible, so fall back to distance.
                     // For rays and other types, preserve the original width.
                     width     = raw.t === "rect"
-                        ? (raw.width ? raw.width / gridWidthScale : distance)
-                        : (raw.width ?? 0) / gridWidthScale;
+                        ? (raw.width ? raw.width / gridWidthScale() : distance)
+                        : (raw.width ?? 0) / gridWidthScale();
                     direction = raw.direction ?? 0;
                     const safeFlags = { ...(raw.flags ?? {}) };
                     if (raw.t === "rect" && Math.abs((raw.direction ?? 0) - 45) < 1 && !f._nonModuleRect) {
