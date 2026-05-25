@@ -995,6 +995,83 @@ describe("Star Template Placer", () => {
                 );
             });
 
+            it("moving a non-module ray stores distance and width as module flags", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                // distance=500→100ft, width=100→5ft; stored flags should have {distance:100,width:5,_nonModule:true}
+                const tpl = makeTemplate("t1", "user-001", "ray", 500);
+                tpl.toObject.mockReturnValue({
+                    t: "ray", distance: 500, width: 100, direction: 0,
+                    x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: {},
+                });
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({
+                        flags: expect.objectContaining({
+                            "star-template-placer": expect.objectContaining({
+                                distance: 100, width: 5, _nonModule: true,
+                            }),
+                        }),
+                    })]
+                );
+            });
+
+            it("moving a non-module circle stores distance as module flags", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                // distance=20→4ft (20/5=4); stored flags should have {distance:4,_nonModule:true}
+                const tpl = makeTemplate("t1", "user-001", "circle", 20);
+                tpl.toObject.mockReturnValue({
+                    t: "circle", distance: 20, width: 0, direction: 0,
+                    x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: {},
+                });
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({
+                        flags: expect.objectContaining({
+                            "star-template-placer": expect.objectContaining({
+                                distance: 4, _nonModule: true,
+                            }),
+                        }),
+                    })]
+                );
+            });
+
+            it("_nonModule flag prevents module path from clamping width to 5ft minimum", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                // Template already has _nonModule flag with width=2 (less than 5ft minimum).
+                // The non-module path must be taken so width=2 is preserved.
+                const tpl = makeTemplate("t1", "user-001", "ray", 500);
+                tpl.toObject.mockReturnValue({
+                    t: "ray", distance: 500, width: 40, direction: 0,
+                    x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: { "star-template-placer": { distance: 100, width: 2, _nonModule: true } },
+                });
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // width=40 stored → 40/20=2ft passed (not clamped to 5)
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({ width: 2 })]
+                );
+            });
+
             it("on Save after a move, the template remains at the new position", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);

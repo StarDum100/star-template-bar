@@ -121,7 +121,7 @@ async function pickNewPosition(templateData) {
         const { x: startX, y: startY } = canvas.mousePosition;
 
         let overrides = {};
-        if (!f._nonModuleRect && (f.distance != null || f.width != null || f.height != null)) {
+        if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
             const fd = f.distance ?? 20;
             const fw = f.width    ?? fd;
             const fh = f.height;
@@ -804,7 +804,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 // To recreate at the same size we must divide the raw stored value by that factor.
                 const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
                 let distance, width, direction, flags;
-                if (!f._nonModuleRect && (f.distance != null || f.width != null || f.height != null)) {
+                if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
                     // Module template: reconstruct original inputs from flags
                     const fd = f.distance ?? 20;
                     const fw = f.width    ?? fd;
@@ -829,13 +829,19 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     const safeFlags = {};
                     if (raw.flags?.core)       safeFlags.core       = raw.flags.core;
                     if (raw.flags?.[MODULE_ID]) safeFlags[MODULE_ID] = raw.flags[MODULE_ID];
-                    // For a direction≈45 rect, store the side lengths as module flags so the
-                    // move tab can show "Wft × Hft" on subsequent views. The _nonModuleRect
-                    // sentinel ensures later moves bypass the module rect path (which would
-                    // apply an extra ×√2 and break the size).
                     if (raw.t === "rect" && Math.abs((raw.direction ?? 0) - 45) < 1 && !f._nonModuleRect) {
+                        // Direction-45 rect: store side lengths. _nonModuleRect prevents the module
+                        // path from applying an extra ×√2 on subsequent moves.
                         const side = Math.round(distance / Math.SQRT2);
                         safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), width: side, height: side, _nonModuleRect: true };
+                    } else if (raw.t !== "rect") {
+                        // Circle, cone, ray: store computed ft values so the move tab displays them
+                        // cleanly. _nonModule sentinel ensures subsequent moves always use the
+                        // non-module path (preserving small widths without Math.max(5,...) clamping).
+                        const stored = { distance: Math.round(distance), _nonModule: true };
+                        if (raw.t === "ray")  stored.width = Math.round(width);
+                        if (raw.t === "cone") stored.angle = Math.round(raw.angle ?? 53.13);
+                        safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), ...stored };
                     }
                     flags = safeFlags;
                 }
