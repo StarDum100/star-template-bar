@@ -499,6 +499,157 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         ? '<tr class="stp-no-custom-row"><td colspan="7">No custom templates saved.</td></tr>'
         : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
 
+    function renderMoveTab($html) {
+        const movePanelEl = $html.find('[data-panel="move"]');
+        const templates = (canvas?.scene?.templates?.contents ?? [])
+            .filter(t => !pendingRemovals.includes(t.id));
+        if (templates.length === 0) {
+            movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
+        } else {
+            movePanelEl.html(buildMoveContent(templates, pendingMoveOriginals));
+        }
+    }
+
+    function wireTemplatesTab($html) {
+        wireTypeToggle($html, "new-");
+
+        $html.on("click", ".stp-delete-btn", (e) => {
+            const index = parseInt($(e.currentTarget).closest("tr").data("index"));
+            const name  = pendingCustom[index].name;
+            pendingCustom.splice(index, 1);
+            for (let r = 0; r < pendingGrid.length; r++) {
+                const idx = pendingGrid[r].indexOf(name);
+                if (idx !== -1) {
+                    pendingGrid[r].splice(idx, 1);
+                    if (pendingGrid[r].length === 0) pendingGrid.splice(r, 1);
+                    break;
+                }
+            }
+            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
+        });
+
+        $html.on("click", ".stp-add-btn", () => {
+            const name = $html.find(".stp-new-name").val().trim();
+            if (!name) {
+                ui.notifications.warn(`${MODULE_TITLE}: Template name is required.`);
+                return;
+            }
+            if (pendingCustom.some(t => t.name === name)) {
+                ui.notifications.warn(`${MODULE_TITLE}: A template named "${escapeHtml(name)}" already exists.`);
+                return;
+            }
+            const { t, distance, angle, width, height, fillColor } = readTemplateForm($html, "new-");
+            pendingCustom.push({ name, t, distance, angle, width, height, fillColor });
+            if (pendingGrid.length === 0) pendingGrid.push([name]);
+            else pendingGrid[pendingGrid.length - 1].push(name);
+            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
+            $html.find(".stp-new-name").val("").focus();
+        });
+
+        $html.on("keydown", ".stp-new-name", (e) => {
+            if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
+        });
+    }
+
+    function wireMoveTab($html, dialog) {
+        $html.on("click", ".stp-remove-template-btn", async (e) => {
+            const row = $(e.currentTarget).closest("tr");
+            const id  = row.attr("data-id");
+            pendingRemovals.push(id);
+            const stagedTpl = canvas?.scene?.templates?.get(id);
+            if (stagedTpl) {
+                pendingRemovalOriginals.set(id, stagedTpl.hidden ?? false);
+                await canvas.scene.updateEmbeddedDocuments("MeasuredTemplate", [{ _id: id, hidden: true }]);
+            }
+            row.remove();
+            if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
+                $html.find('[data-panel="move"]').html('<p class="stp-move-empty">No templates on the map.</p>');
+            }
+        });
+
+        $html.on("click", ".stp-move-template-btn", (e) => {
+            const id  = $(e.currentTarget).closest("tr").attr("data-id");
+            const tpl = canvas?.scene?.templates?.get(id);
+            if (!tpl) return;
+            moveRequested = id;
+            dialog.close();
+        });
+    }
+
+    function wireLayoutTab($html) {
+        let dragIndex = -1;
+
+        $html.on("dragstart", ".stp-layout-tile", (e) => {
+            dragIndex = parseInt($(e.currentTarget).data("index"));
+            e.originalEvent.dataTransfer.effectAllowed = "move";
+            setTimeout(() => $(e.currentTarget).addClass("stp-dragging"), 0);
+        });
+
+        $html.on("dragend", ".stp-layout-tile", () => {
+            $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-dragging stp-slot-over");
+            dragIndex = -1;
+        });
+
+        $html.on("dragover", ".stp-layout-tile, .stp-layout-slot", (e) => {
+            const idx = parseInt($(e.currentTarget).data("index"));
+            if (dragIndex === -1 || idx === dragIndex) return;
+            e.preventDefault();
+            $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-slot-over");
+            $(e.currentTarget).addClass("stp-slot-over");
+        });
+
+        $html.on("dragleave", ".stp-layout-tile, .stp-layout-slot", (e) => {
+            $(e.currentTarget).removeClass("stp-slot-over");
+        });
+
+        $html.on("drop", ".stp-layout-tile, .stp-layout-slot", (e) => {
+            e.preventDefault();
+            const tgtIdx = parseInt($(e.currentTarget).data("index"));
+            const srcIdx = dragIndex;
+            dragIndex = -1;
+            if (srcIdx === -1 || tgtIdx === srcIdx) return;
+
+            const flat = pendingGrid.flat();
+            const name = flat[srcIdx];
+            flat.splice(srcIdx, 1);
+            const adjusted = srcIdx < tgtIdx ? tgtIdx - 1 : tgtIdx;
+            flat.splice(Math.min(adjusted, flat.length), 0, name);
+
+            reshapeGrid(pendingGrid, pendingGrid.length, flat);
+            renderLayoutEditor($html, pendingGrid, pendingCustom);
+        });
+
+        $html.on("change", ".stp-rows-input", (e) => {
+            const flat = pendingGrid.flat();
+            let n = parseInt(e.target.value);
+            if (isNaN(n) || n < 1) n = 1;
+            if (n > flat.length) n = flat.length;
+            $(e.target).val(n);
+            reshapeGrid(pendingGrid, n, flat);
+            renderLayoutEditor($html, pendingGrid, pendingCustom);
+        });
+    }
+
+    function wireExtraTab($html) {
+        $html.on("change", ".stp-hide-bar-checkbox", (e) => {
+            if (e.target.checked) bar.hide();
+            else                  bar.show();
+        });
+    }
+
+    function wireResetTab($html) {
+        $html.on("click", ".stp-reset-position-btn", () => {
+            if (!pendingResetPosition) {
+                originalPosition = {
+                    left: parseInt(bar.css("left")),
+                    top:  parseInt(bar.css("top")),
+                };
+            }
+            pendingResetPosition = true;
+            applyBarPosition(bar, null);
+        });
+    }
+
     const content = `
         <div class="stp-tabs">
             <button type="button" class="${tab("templates")}" data-tab="templates">Templates</button>
@@ -585,167 +736,23 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         render: (event, dialog) => {
             const $html = $(dialog.element);
 
-            function renderMoveTab() {
-                const movePanelEl = $html.find('[data-panel="move"]');
-                const templates = (canvas?.scene?.templates?.contents ?? [])
-                    .filter(t => !pendingRemovals.includes(t.id));
-                if (templates.length === 0) {
-                    movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
-                } else {
-                    movePanelEl.html(buildMoveContent(templates, pendingMoveOriginals));
-                }
-            }
-
-            // Tab switching
             $html.on("click", ".stp-tab", (e) => {
                 const tabName = e.currentTarget.dataset.tab;
                 $html.find(".stp-tab").removeClass("stp-tab-active");
                 $(e.currentTarget).addClass("stp-tab-active");
                 $html.find(".stp-tab-panel").addClass("stp-tab-panel-hidden");
                 $html.find(`[data-panel="${tabName}"]`).removeClass("stp-tab-panel-hidden");
-                if (tabName === "move")   renderMoveTab();
+                if (tabName === "move")   renderMoveTab($html);
                 if (tabName === "layout") renderLayoutEditor($html, pendingGrid, pendingCustom);
             });
 
-            // Type toggle in add form
-            wireTypeToggle($html, "new-");
+            wireTemplatesTab($html);
+            wireMoveTab($html, dialog);
+            wireLayoutTab($html);
+            wireExtraTab($html);
+            wireResetTab($html);
 
-            // Delete a custom template row
-            $html.on("click", ".stp-delete-btn", (e) => {
-                const index = parseInt($(e.currentTarget).closest("tr").data("index"));
-                const name  = pendingCustom[index].name;
-                pendingCustom.splice(index, 1);
-                for (let r = 0; r < pendingGrid.length; r++) {
-                    const idx = pendingGrid[r].indexOf(name);
-                    if (idx !== -1) {
-                        pendingGrid[r].splice(idx, 1);
-                        if (pendingGrid[r].length === 0) pendingGrid.splice(r, 1);
-                        break;
-                    }
-                }
-                $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
-            });
-
-            // Add a custom template
-            $html.on("click", ".stp-add-btn", () => {
-                const name = $html.find(".stp-new-name").val().trim();
-                if (!name) {
-                    ui.notifications.warn(`${MODULE_TITLE}: Template name is required.`);
-                    return;
-                }
-                if (pendingCustom.some(t => t.name === name)) {
-                    ui.notifications.warn(`${MODULE_TITLE}: A template named "${escapeHtml(name)}" already exists.`);
-                    return;
-                }
-                const { t, distance, angle, width, height, fillColor } = readTemplateForm($html, "new-");
-                pendingCustom.push({ name, t, distance, angle, width, height, fillColor });
-                if (pendingGrid.length === 0) pendingGrid.push([name]);
-                else pendingGrid[pendingGrid.length - 1].push(name);
-                $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
-                $html.find(".stp-new-name").val("").focus();
-            });
-
-            $html.on("keydown", ".stp-new-name", (e) => {
-                if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
-            });
-
-            // Move tab: hide template as preview; actually deleted on Save, restored on Cancel
-            $html.on("click", ".stp-remove-template-btn", async (e) => {
-                const row = $(e.currentTarget).closest("tr");
-                const id  = row.attr("data-id");
-                pendingRemovals.push(id);
-                const stagedTpl = canvas?.scene?.templates?.get(id);
-                if (stagedTpl) {
-                    pendingRemovalOriginals.set(id, stagedTpl.hidden ?? false);
-                    await canvas.scene.updateEmbeddedDocuments("MeasuredTemplate", [{ _id: id, hidden: true }]);
-                }
-                row.remove();
-                if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
-                    $html.find('[data-panel="move"]').html('<p class="stp-move-empty">No templates on the map.</p>');
-                }
-            });
-
-            // Move tab: pick up a template and reposition it
-            $html.on("click", ".stp-move-template-btn", (e) => {
-                const id  = $(e.currentTarget).closest("tr").attr("data-id");
-                const tpl = canvas?.scene?.templates?.get(id);
-                if (!tpl) return;
-                moveRequested = id;
-                dialog.close();
-            });
-
-            // Layout tab: drag-and-drop
-            let dragIndex = -1;
-
-            $html.on("dragstart", ".stp-layout-tile", (e) => {
-                dragIndex = parseInt($(e.currentTarget).data("index"));
-                e.originalEvent.dataTransfer.effectAllowed = "move";
-                setTimeout(() => $(e.currentTarget).addClass("stp-dragging"), 0);
-            });
-
-            $html.on("dragend", ".stp-layout-tile", () => {
-                $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-dragging stp-slot-over");
-                dragIndex = -1;
-            });
-
-            $html.on("dragover", ".stp-layout-tile, .stp-layout-slot", (e) => {
-                const idx = parseInt($(e.currentTarget).data("index"));
-                if (dragIndex === -1 || idx === dragIndex) return;
-                e.preventDefault();
-                $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-slot-over");
-                $(e.currentTarget).addClass("stp-slot-over");
-            });
-
-            $html.on("dragleave", ".stp-layout-tile, .stp-layout-slot", (e) => {
-                $(e.currentTarget).removeClass("stp-slot-over");
-            });
-
-            $html.on("drop", ".stp-layout-tile, .stp-layout-slot", (e) => {
-                e.preventDefault();
-                const tgtIdx = parseInt($(e.currentTarget).data("index"));
-                const srcIdx = dragIndex;
-                dragIndex = -1;
-                if (srcIdx === -1 || tgtIdx === srcIdx) return;
-
-                const flat = pendingGrid.flat();
-                const name = flat[srcIdx];
-                flat.splice(srcIdx, 1);
-                const adjusted = srcIdx < tgtIdx ? tgtIdx - 1 : tgtIdx;
-                flat.splice(Math.min(adjusted, flat.length), 0, name);
-
-                reshapeGrid(pendingGrid, pendingGrid.length, flat);
-                renderLayoutEditor($html, pendingGrid, pendingCustom);
-            });
-
-            $html.on("change", ".stp-rows-input", (e) => {
-                const flat = pendingGrid.flat();
-                let n = parseInt(e.target.value);
-                if (isNaN(n) || n < 1) n = 1;
-                if (n > flat.length) n = flat.length;
-                $(e.target).val(n);
-                reshapeGrid(pendingGrid, n, flat);
-                renderLayoutEditor($html, pendingGrid, pendingCustom);
-            });
-
-            // Extra tab: live preview hide/show
-            $html.on("change", ".stp-hide-bar-checkbox", (e) => {
-                if (e.target.checked) bar.hide();
-                else                  bar.show();
-            });
-
-            // Reset tab: live preview position reset
-            $html.on("click", ".stp-reset-position-btn", () => {
-                if (!pendingResetPosition) {
-                    originalPosition = {
-                        left: parseInt(bar.css("left")),
-                        top:  parseInt(bar.css("top")),
-                    };
-                }
-                pendingResetPosition = true;
-                applyBarPosition(bar, null);
-            });
-
-            if (initialTab === "move")   renderMoveTab();
+            if (initialTab === "move")   renderMoveTab($html);
             if (initialTab === "layout") renderLayoutEditor($html, pendingGrid, pendingCustom);
         }
     });
