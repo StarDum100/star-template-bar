@@ -121,7 +121,7 @@ async function pickNewPosition(templateData) {
         const { x: startX, y: startY } = canvas.mousePosition;
 
         let overrides = {};
-        if (f.distance != null || f.width != null || f.height != null) {
+        if (!f._nonModuleRect && (f.distance != null || f.width != null || f.height != null)) {
             const fd = f.distance ?? 20;
             const fw = f.width    ?? fd;
             const fh = f.height;
@@ -192,8 +192,8 @@ function templateOwnerName(t) {
 }
 
 function templateDistanceFt(t) {
-    const gridDistance = canvas?.scene?.grid?.distance ?? 1;
-    return Math.round(t.distance * gridDistance);
+    const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
+    return Math.round(t.distance / gridDist);
 }
 
 function buildMoveContent(templates, pendingMoveOriginals) {
@@ -206,10 +206,13 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}°` : "—";
         let distCell;
         if (t.t === "rect") {
-            distCell = (f.width != null && f.height != null) ? `${f.width}ft × ${f.height}ft` : "—";
+            distCell = (f.width != null && f.height != null)
+                ? `${f.width}ft × ${f.height}ft`
+                : `${templateDistanceFt(t)}ft`;
         } else if (t.t === "ray") {
+            const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
             const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
-            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) * gridDistance)}`;
+            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridDist)}`;
             distCell = `${rayDist}ft × ${rayWidth}ft`;
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
@@ -792,7 +795,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 // To recreate at the same size we must divide the raw stored value by that factor.
                 const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
                 let distance, width, direction, flags;
-                if (f.distance != null || f.width != null || f.height != null) {
+                if (!f._nonModuleRect && (f.distance != null || f.width != null || f.height != null)) {
                     // Module template: reconstruct original inputs from flags
                     const fd = f.distance ?? 20;
                     const fw = f.width    ?? fd;
@@ -812,6 +815,14 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     const safeFlags = {};
                     if (raw.flags?.core)       safeFlags.core       = raw.flags.core;
                     if (raw.flags?.[MODULE_ID]) safeFlags[MODULE_ID] = raw.flags[MODULE_ID];
+                    // For a direction≈45 rect, store the side lengths as module flags so the
+                    // move tab can show "Wft × Hft" on subsequent views. The _nonModuleRect
+                    // sentinel ensures later moves bypass the module rect path (which would
+                    // apply an extra ×√2 and break the size).
+                    if (raw.t === "rect" && Math.abs((raw.direction ?? 0) - 45) < 1 && !f._nonModuleRect) {
+                        const side = Math.round(distance / Math.SQRT2);
+                        safeFlags[MODULE_ID] = { ...(safeFlags[MODULE_ID] ?? {}), width: side, height: side, _nonModuleRect: true };
+                    }
                     flags = safeFlags;
                 }
                 console.log(`${MODULE_TITLE} | scene.grid full:`, JSON.stringify(canvas?.scene?.grid ?? {}));

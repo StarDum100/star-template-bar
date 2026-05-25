@@ -679,16 +679,16 @@ describe("Star Template Placer", () => {
                 expect(swatch.attr("style")).toContain("#ff4400");
             });
 
-            it("multiplies distance by grid.distance to display feet", () => {
-                global.canvas.scene.grid.distance = 5;
-                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
+            it("divides stored distance by grid.size/20 to display feet", () => {
+                // stored distance = 100, gridDist = (100/20) = 5 → 100/5 = 20ft
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 100)]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
             it("shows distance × width for ray templates from template data", () => {
-                global.canvas.scene.grid.distance = 5;
-                const tpl = makeTemplate("t1", "user-001", "ray", 4);
-                tpl.width = 3;
+                // stored distance=100/width=75 with gridDist=5 → 20ft × 15ft
+                const tpl = makeTemplate("t1", "user-001", "ray", 100);
+                tpl.width = 75;
                 const { html } = openConfigOnMoveTab([tpl]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 15ft");
             });
@@ -707,10 +707,11 @@ describe("Star Template Placer", () => {
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("30ft × 40ft");
             });
 
-            it("shows dash for rect dimensions when flags are absent", () => {
-                const tpl = makeTemplate("t1", "user-001", "rect", 5);
+            it("shows computed distance for rect when flags are absent", () => {
+                // stored=100, gridDist=5 → 20ft
+                const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("—");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
             it("shows angle in degrees for cone templates", () => {
@@ -924,6 +925,34 @@ describe("Star Template Placer", () => {
                 );
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", [expect.objectContaining({ x: 300, y: 250 })]
+                );
+            });
+
+            it("moving a non-module direction-45 rect injects side-length flags", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                // stored distance=100 → gridDist=5 → input=20 → side = round(20/√2) = 14
+                const tpl = makeTemplate("t1", "user-001", "rect", 100);
+                tpl.toObject.mockReturnValue({
+                    t: "rect", distance: 100, width: 0, direction: 45,
+                    x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: {},
+                });
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                const side = Math.round((100 / 5) / Math.SQRT2); // 14
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({
+                        flags: expect.objectContaining({
+                            "star-template-placer": expect.objectContaining({
+                                width: side, height: side, _nonModuleRect: true,
+                            }),
+                        }),
+                    })]
                 );
             });
 
