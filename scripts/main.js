@@ -897,10 +897,14 @@ Hooks.once("ready", () => {
     </div>`);
 
     $("body").append(bar);
-    applyBarPosition(bar);
     renderCustomButtons(bar);
     initBarDrag(bar);
-    if (game.settings.get(MODULE_ID, "barHidden")) bar.hide();
+    // Defer until after the browser has laid out the element so outerWidth() is accurate,
+    // which makes the default centred position match what "Reset Position" produces.
+    requestAnimationFrame(() => {
+        applyBarPosition(bar);
+        if (game.settings.get(MODULE_ID, "barHidden")) bar.hide();
+    });
 
     bar.find(".stp-place-btn").on("click",  () => openPlaceDialog());
     bar.find(".stp-move-btn").on("click", () => {

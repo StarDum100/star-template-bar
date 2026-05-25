@@ -79,6 +79,7 @@ global.ui = {
         info: jest.fn(),
     },
 };
+global.requestAnimationFrame = cb => cb();
 global.foundry = { applications: { api: { DialogV2: {} } } };
 global.foundry.applications.api.DialogV2.wait = jest.fn().mockImplementation((options) => {
     global.foundry.applications.api.DialogV2.__lastOptions = options;
@@ -280,6 +281,38 @@ describe("Star Template Placer", () => {
         it("applies a default top of 10px when no barPosition flag is set", () => {
             setupBar();
             expect(document.querySelector(".stp-template-bar").style.top).toBe("10px");
+        });
+
+        it("defers position calculation to requestAnimationFrame so outerWidth is accurate", () => {
+            let rafCb;
+            global.requestAnimationFrame = cb => { rafCb = cb; };
+            try {
+                setupBar();
+                // RAF scheduled but not yet fired — position not yet applied
+                const bar = document.querySelector(".stp-template-bar");
+                expect(bar.style.left).toBe("");
+                expect(bar.style.top).toBe("");
+                // After RAF fires, default position is applied
+                rafCb();
+                expect(bar.style.top).toBe("10px");
+            } finally {
+                global.requestAnimationFrame = cb => cb();
+            }
+        });
+
+        it("barHidden hide is also deferred so the bar is visible when outerWidth is measured", () => {
+            let rafCb;
+            global.requestAnimationFrame = cb => { rafCb = cb; };
+            try {
+                setupBar({ barHidden: true });
+                // Bar should still be visible before RAF fires (so layout can be measured)
+                expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
+                rafCb();
+                // After RAF: position applied and bar hidden
+                expect(document.querySelector(".stp-template-bar").style.display).toBe("none");
+            } finally {
+                global.requestAnimationFrame = cb => cb();
+            }
         });
 
         it("saves position to flag on drag end", () => {
