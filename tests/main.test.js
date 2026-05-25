@@ -63,7 +63,7 @@ global.canvas = {
         placeables: [],
     },
     scene: {
-        grid: { distance: 5 },
+        grid: { size: 100, distance: 5 },
         templates: {
             contents: [],
             get: jest.fn(),
@@ -686,11 +686,11 @@ describe("Star Template Placer", () => {
             });
 
             it("shows distance × width for ray templates from template data", () => {
-                // stored distance=100/width=75 with gridDist=5 → 20ft × 15ft
+                // stored distance=100 → gridDist=5 → 20ft; stored width=100 → gridWidthScale=20 → 5ft
                 const tpl = makeTemplate("t1", "user-001", "ray", 100);
-                tpl.width = 75;
+                tpl.width = 100;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 15ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 5ft");
             });
 
             it("ray with width=0 shows 0ft width, not distance", () => {
@@ -971,6 +971,27 @@ describe("Star Template Placer", () => {
                             }),
                         }),
                     })]
+                );
+            });
+
+            it("moving a non-module ray divides width by gridWidthScale (size/distance)", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                // grid.size=100, grid.distance=5 → gridWidthScale=20; stored width=100 → passes 100/20=5
+                const tpl = makeTemplate("t1", "user-001", "ray", 500);
+                tpl.toObject.mockReturnValue({
+                    t: "ray", distance: 500, width: 100, direction: 0,
+                    x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
+                    flags: {},
+                });
+                openConfigOnMoveTab([tpl]);
+                const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
+                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate",
+                    [expect.objectContaining({ t: "ray", distance: 100, width: 5 })]
                 );
             });
 

@@ -133,10 +133,12 @@ async function pickNewPosition(templateData) {
             };
         } else {
             // Non-module template: undo v14's grid.size/20 scaling for a correctly sized preview.
-            const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
+            // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
+            const gridDist       = (canvas?.scene?.grid?.size ?? 100) / 20;
+            const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
             overrides = {
                 distance: baseData.distance / gridDist,
-                width:    baseData.width ? baseData.width / gridDist : baseData.distance / gridDist,
+                width:    baseData.width ? baseData.width / gridWidthScale : baseData.distance / gridDist,
             };
         }
 
@@ -217,9 +219,9 @@ function buildMoveContent(templates, pendingMoveOriginals) {
                 distCell = `${side}ft`;
             }
         } else if (t.t === "ray") {
-            const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
+            const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
             const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
-            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridDist)}`;
+            const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridWidthScale)}`;
             distCell = `${rayDist}ft × ${rayWidth}ft`;
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
@@ -815,12 +817,14 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     // Non-module template: undo v14's grid.distance scaling.
                     // Strip system-specific flags (dnd5e, pf2e, etc.) so their
                     // preCreate hooks don't recompute distance from their own dimensions.
+                    // distance uses grid.size/20 as its scale factor; width uses grid.size/grid.distance.
+                    const gridWidthScale = (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance ?? 1);
                     distance  = raw.distance / gridDist;
                     // For rects width=0 would make the template invisible, so fall back to distance.
-                    // For other types (rays etc.) preserve the original width rather than inheriting distance.
+                    // For rays and other types, preserve the original width.
                     width     = raw.t === "rect"
-                        ? (raw.width ? raw.width / gridDist : distance)
-                        : (raw.width ?? 0) / gridDist;
+                        ? (raw.width ? raw.width / gridWidthScale : distance)
+                        : (raw.width ?? 0) / gridWidthScale;
                     direction = raw.direction ?? 0;
                     const safeFlags = {};
                     if (raw.flags?.core)       safeFlags.core       = raw.flags.core;
