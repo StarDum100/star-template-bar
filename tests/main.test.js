@@ -47,10 +47,10 @@ global.canvas = {
     stage: { pivot: { x: 500, y: 400 } },
     mousePosition: { x: 500, y: 400 },
     grid: {
-        getSnappedPosition: jest.fn((x, y) => ({ x, y })),
+        getSnappedPoint: jest.fn(({x, y}) => ({ x, y })),
     },
     app: {
-        view: {
+        canvas: {
             addEventListener:    jest.fn(),
             removeEventListener: jest.fn(),
         },
@@ -119,7 +119,7 @@ async function simulateCanvasClick() {
         .filter(c => c[0] === "pointerdown");
     const handler = calls[calls.length - 1]?.[1];
     if (!handler) return;
-    await handler({ target: global.canvas.app.view });
+    await handler({ target: global.canvas.app.canvas });
     await new Promise(r => setTimeout(r, 0));
 }
 
@@ -160,10 +160,10 @@ function setupBar(flagOverrides = {}) {
         }
         return ids;
     });
-    global.canvas.app.view.addEventListener.mockClear();
-    global.canvas.app.view.removeEventListener.mockClear();
+    global.canvas.app.canvas.addEventListener.mockClear();
+    global.canvas.app.canvas.removeEventListener.mockClear();
     window.addEventListener.mockClear();
-    global.canvas.grid.getSnappedPosition.mockClear();
+    global.canvas.grid.getSnappedPoint.mockClear();
     global.canvas.templates.preview.addChild.mockClear();
     global.canvas.templates.preview.removeChild.mockClear();
     global.canvas.templates.placeables = [];
@@ -555,7 +555,7 @@ describe("Star Template Placer", () => {
             await new Promise(r => setTimeout(r, 0));
 
             global.canvas.mousePosition = { x: 200, y: 100 };
-            const moveCalls = global.canvas.app.view.addEventListener.mock.calls
+            const moveCalls = window.addEventListener.mock.calls
                 .filter(c => c[0] === "pointermove");
             const moveHandler = moveCalls[moveCalls.length - 1]?.[1];
             moveHandler?.();
@@ -1143,6 +1143,39 @@ describe("Star Template Placer", () => {
                 // The moved template should be deleted and the original data recreated
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenLastCalledWith(
                     "MeasuredTemplate", ["created-1"]
+                );
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenLastCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
+                );
+            });
+
+            it("cancelling after two moves restores the template to its original position", async () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+
+                // First move
+                $(global.foundry.applications.api.DialogV2.__lastInstance.element)
+                    .find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+
+                // Second dialog open; do a second move
+                const { html: html2 } = openDialogHtml();
+                html2.find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                global.canvas.mousePosition = { x: 500, y: 400 };
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+
+                // Third dialog open; Cancel
+                global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                await new Promise(r => setTimeout(r, 0));
+
+                // Both moves undone: last-placed template deleted and original position recreated
+                expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenLastCalledWith(
+                    "MeasuredTemplate", ["created-2"]
                 );
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenLastCalledWith(
                     "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]

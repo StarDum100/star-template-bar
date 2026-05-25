@@ -61,7 +61,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
         const cleanup = () => {
             canvas.templates.preview.removeChild(template);
             template.destroy?.({ children: true });
-            canvas.app.view.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointermove", onMove);
             window.removeEventListener("pointerdown", onPlace, { capture: true });
             window.removeEventListener("keydown", onCancel);
             document.body.style.cursor = prevCursor;
@@ -69,7 +69,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
 
         const onMove = () => {
             const { x, y } = canvas.mousePosition;
-            const snapped  = canvas.grid?.getSnappedPosition?.(x, y) ?? { x, y };
+            const snapped  = canvas.grid.getSnappedPoint({ x, y });
             template.document.updateSource({ x: snapped.x, y: snapped.y });
             template.refresh?.();
         };
@@ -77,7 +77,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
         const onPlace = async () => {
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
-            const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
+            const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
             await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
                 ...templateData, x, y,
                 flags: {
@@ -99,7 +99,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
             resolve();
         };
 
-        canvas.app.view.addEventListener("pointermove", onMove);
+        window.addEventListener("pointermove", onMove);
         window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
     });
@@ -152,7 +152,7 @@ function pickNewPosition(templateData) {
         const cleanup = () => {
             canvas.templates.preview.removeChild(template);
             template.destroy?.({ children: true });
-            canvas.app.view.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointermove", onMove);
             window.removeEventListener("pointerdown", onPlace, { capture: true });
             window.removeEventListener("keydown", onCancel);
             document.body.style.cursor = prevCursor;
@@ -160,7 +160,7 @@ function pickNewPosition(templateData) {
 
         const onMove = () => {
             const { x, y } = canvas.mousePosition;
-            const snapped  = canvas.grid?.getSnappedPosition?.(x, y) ?? { x, y };
+            const snapped  = canvas.grid.getSnappedPoint({ x, y });
             template.document.updateSource({ x: snapped.x, y: snapped.y });
             template.refresh?.();
         };
@@ -168,7 +168,7 @@ function pickNewPosition(templateData) {
         const onPlace = () => {
             cleanup();
             const { x: rawX, y: rawY } = canvas.mousePosition;
-            const { x, y } = canvas.grid?.getSnappedPosition?.(rawX, rawY) ?? { x: rawX, y: rawY };
+            const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
             resolve({ x, y });
         };
 
@@ -178,7 +178,7 @@ function pickNewPosition(templateData) {
             resolve(null);
         };
 
-        canvas.app.view.addEventListener("pointermove", onMove);
+        window.addEventListener("pointermove", onMove);
         window.addEventListener("pointerdown", onPlace, { capture: true });
         window.addEventListener("keydown", onCancel);
     });
