@@ -131,6 +131,13 @@ async function pickNewPosition(templateData) {
                 width:     Math.max(5, fw ?? fd),
                 direction: t === "rect" ? 45 : 0,
             };
+        } else {
+            // Non-module template: undo v14's grid.size/20 scaling for a correctly sized preview.
+            const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
+            overrides = {
+                distance: baseData.distance / gridDist,
+                width:    baseData.width ? baseData.width / gridDist : baseData.distance / gridDist,
+            };
         }
 
         const doc = new CONFIG.MeasuredTemplate.documentClass({
@@ -781,8 +788,10 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 // Foundry v14 multiplies distance/width by grid.distance at creation time,
                 // so we must pass the original un-scaled values to avoid doubling the size.
                 const f        = raw.flags?.[MODULE_ID] ?? {};
-                const gridDist = canvas?.scene?.grid?.distance ?? 1;
-                let distance, width, direction;
+                // Foundry v14 stores MeasuredTemplate.distance scaled by (grid.size / 20).
+                // To recreate at the same size we must divide the raw stored value by that factor.
+                const gridDist = (canvas?.scene?.grid?.size ?? 100) / 20;
+                let distance, width, direction, flags;
                 if (f.distance != null || f.width != null || f.height != null) {
                     // Module template: reconstruct original inputs from flags
                     const fd = f.distance ?? 20;
@@ -791,28 +800,37 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     distance  = raw.t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
                     width     = Math.max(5, fw ?? fd);
                     direction = raw.t === "rect" ? 45 : (raw.direction ?? 0);
+                    flags     = raw.flags;
                 } else {
-                    // Non-module template: undo v14's grid.distance scaling
+                    // Non-module template: undo v14's grid.distance scaling.
+                    // Strip system-specific flags (dnd5e, pf2e, etc.) so their
+                    // preCreate hooks don't recompute distance from their own dimensions.
                     distance  = raw.distance / gridDist;
-                    width     = (raw.width ?? 0) / gridDist;
+                    // If width is null/0, fall back to distance so rect templates stay visible.
+                    width     = raw.width ? raw.width / gridDist : distance;
                     direction = raw.direction ?? 0;
+                    const safeFlags = {};
+                    if (raw.flags?.core)       safeFlags.core       = raw.flags.core;
+                    if (raw.flags?.[MODULE_ID]) safeFlags[MODULE_ID] = raw.flags[MODULE_ID];
+                    flags = safeFlags;
                 }
-                console.log(`${MODULE_TITLE} | grid.distance:`, gridDist, "| distance to use:", distance, "| width to use:", width);
+                console.log(`${MODULE_TITLE} | scene.grid full:`, JSON.stringify(canvas?.scene?.grid ?? {}));
+                console.log(`${MODULE_TITLE} | canvas.dimensions.distance:`, canvas?.dimensions?.distance);
+                console.log(`${MODULE_TITLE} | canvas.dimensions.size:`, canvas?.dimensions?.size);
+                console.log(`${MODULE_TITLE} | gridDist used (dimensions.distance):`, gridDist, "| distance to use:", distance, "| width to use:", width);
 
                 const origData = pendingMoveOriginals.get(moveRequested) ?? {
                     t: raw.t, distance, angle: f.angle ?? raw.angle, width,
                     direction, fillColor: raw.fillColor, borderColor: raw.borderColor,
-                    user: raw.user, flags: raw.flags, x: raw.x, y: raw.y,
+                    user: raw.user, flags, x: raw.x, y: raw.y,
                 };
-                console.log(`${MODULE_TITLE} | origData being sent to createEmbeddedDocuments:`, JSON.stringify(origData));
+                const createData = { ...origData, x: roundedPos.x, y: roundedPos.y };
+                console.log(`${MODULE_TITLE} | origData stored for restore:`, JSON.stringify(origData));
+                console.log(`${MODULE_TITLE} | actual createEmbeddedDocuments data:`, JSON.stringify(createData));
                 await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
                 pendingMoveOriginals.delete(moveRequested);
-                const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
-                    ...origData,
-                    x: roundedPos.x,
-                    y: roundedPos.y,
-                }]);
-                console.log(`${MODULE_TITLE} | newDoc after creation — distance:`, newDoc?.distance, "id:", newDoc?.id);
+                const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
+                console.log(`${MODULE_TITLE} | newDoc after creation — distance:`, newDoc?.distance, "x:", newDoc?.x, "y:", newDoc?.y, "id:", newDoc?.id);
                 if (newDoc?.id) {
                     pendingMoveOriginals.set(newDoc.id, origData);
                 }

@@ -1008,7 +1008,8 @@ describe("Star Template Placer", () => {
                 );
             });
 
-            it("preview falls back to raw document fields when no module flags are present", async () => {
+            it("preview corrects v14 scaling for non-module templates", async () => {
+                // Stored distance=7 with grid.size=100 → gridDist=5 → preview distance=7/5=1.4
                 const tpl = makeTemplate("t1", "user-001", "circle", 7);
                 openConfigOnMoveTab([tpl]);
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
@@ -1017,7 +1018,7 @@ describe("Star Template Placer", () => {
                 await new Promise(r => setTimeout(r, 0));
                 await new Promise(r => setTimeout(r, 0));
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
-                    expect.objectContaining({ t: "circle", distance: 7 }), expect.anything()
+                    expect.objectContaining({ t: "circle", distance: 7 / 5 }), expect.anything()
                 );
             });
 
