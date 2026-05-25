@@ -104,6 +104,13 @@ window.addEventListener = jest.fn((...args) => _origWindowAEL(...args));
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
+// Lets pending promise continuations settle before assertions run. A single
+// macrotask tick (setTimeout 0) drains the entire microtask queue — including
+// chained awaits like delete → create → catch → create — because the queue is
+// fully emptied before the timer fires. The mocked DB ops resolve synchronously
+// (no real timers), so one flush is always enough regardless of chain length.
+const flushAsync = () => new Promise(r => setTimeout(r, 0));
+
 function openDialogHtml() {
     const options  = global.foundry.applications.api.DialogV2.__lastOptions;
     const instance = global.foundry.applications.api.DialogV2.__lastInstance;
@@ -121,7 +128,7 @@ async function simulateCanvasClick() {
     const handler = calls[calls.length - 1]?.[1];
     if (!handler) return;
     await handler({ target: global.canvas.app.canvas });
-    await new Promise(r => setTimeout(r, 0));
+    await flushAsync();
 }
 
 async function triggerPlaceFromDialog(htmlModifier) {
@@ -132,7 +139,7 @@ async function triggerPlaceFromDialog(htmlModifier) {
     const placeBtn  = options.buttons.find(b => b.action === "place");
     placeBtn.callback(null, null, { element: container });
     global.foundry.applications.api.DialogV2.__resolveDialog("place");
-    await new Promise(r => setTimeout(r, 0));
+    await flushAsync();
     await simulateCanvasClick();
 }
 
@@ -494,7 +501,7 @@ describe("Star Template Placer", () => {
             const placeBtn  = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(window.addEventListener).toHaveBeenCalledWith(
                 "pointerdown", expect.any(Function), { capture: true }
             );
@@ -507,7 +514,7 @@ describe("Star Template Placer", () => {
             const placeBtn  = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.canvas.templates.preview.addChild).toHaveBeenCalled();
         });
 
@@ -522,7 +529,7 @@ describe("Star Template Placer", () => {
             const placeBtn = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                 expect.objectContaining({ t: "rect", width: 30, distance: 40 * Math.SQRT2 }), expect.anything()
             );
@@ -538,7 +545,7 @@ describe("Star Template Placer", () => {
             const placeBtn = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                 expect.objectContaining({ t: "ray", width: 10 }), expect.anything()
             );
@@ -556,7 +563,7 @@ describe("Star Template Placer", () => {
             const placeBtn  = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
 
             global.canvas.mousePosition = { x: 200, y: 100 };
             const moveCalls = window.addEventListener.mock.calls
@@ -597,7 +604,7 @@ describe("Star Template Placer", () => {
             const placeBtn  = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
             global.foundry.applications.api.DialogV2.__resolveDialog("place");
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No active scene")
             );
@@ -621,7 +628,7 @@ describe("Star Template Placer", () => {
             global.ui.notifications.warn.mockClear();
             global.canvas.scene.templates.contents = [];
             document.querySelector(".stp-move-btn").click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No templates to move")
             );
@@ -632,7 +639,7 @@ describe("Star Template Placer", () => {
             global.canvas.scene = null;
             global.ui.notifications.warn.mockClear();
             document.querySelector(".stp-move-btn").click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No active scene")
             );
@@ -643,7 +650,7 @@ describe("Star Template Placer", () => {
             global.ui.notifications.warn.mockClear();
             global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
             document.querySelector(".stp-move-btn").click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No templates to move")
             );
@@ -661,7 +668,7 @@ describe("Star Template Placer", () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [];
             document.querySelector(".stp-move-btn").click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
         });
 
@@ -877,7 +884,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", ["t1"]
                 );
@@ -887,10 +894,10 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
             }
 
             it("recreates the template at its original position on Cancel", async () => {
@@ -967,15 +974,15 @@ describe("Star Template Placer", () => {
                     makeTemplate("t2", "user-001", "circle", 6),
                 ]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.canvas.scene.createEmbeddedDocuments
                     .mockRejectedValueOnce(new Error("permission denied"))
                     .mockResolvedValue([]);
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Both deleted templates attempted despite the first rejection
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
                 expect(errSpy).toHaveBeenCalled();
@@ -986,7 +993,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html, options } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 global.canvas.scene.deleteEmbeddedDocuments.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
@@ -998,7 +1005,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 html.find("[data-tab='templates']").trigger("click");
                 html.find("[data-tab='move']").trigger("click");
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
@@ -1008,14 +1015,14 @@ describe("Star Template Placer", () => {
             it("removes the row from the table after delete", async () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
             });
 
             it("shows empty state when last template is deleted", async () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(html.find(".stp-move-empty").length).toBe(1);
             });
 
@@ -1025,7 +1032,7 @@ describe("Star Template Placer", () => {
                     makeTemplate("t2", "user-001", "circle", 6),
                 ]);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(1);
                 expect(html.find('[data-panel="move"] tbody tr[data-id="t2"]')).toHaveLength(1);
             });
@@ -1035,7 +1042,7 @@ describe("Star Template Placer", () => {
                 const { html } = openConfigOnMoveTab([tpl]);
                 global.canvas.scene.templates.get.mockReturnValue(undefined);
                 html.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
                 expect(global.canvas.scene.deleteEmbeddedDocuments).not.toHaveBeenCalled();
             });
@@ -1118,8 +1125,7 @@ describe("Star Template Placer", () => {
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
                 // Close resolves the dialog promise
-                await new Promise(r => setTimeout(r, 0));
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(window.addEventListener).toHaveBeenCalledWith(
                     "pointerdown", expect.any(Function), { capture: true }
                 );
@@ -1131,9 +1137,9 @@ describe("Star Template Placer", () => {
                 global.foundry.applications.api.DialogV2.wait.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
                 const lastOptions = global.foundry.applications.api.DialogV2.__lastOptions;
                 const reopened = document.createElement("div");
@@ -1147,9 +1153,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", ["t1"]
                 );
@@ -1170,9 +1176,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 const side = Math.round((100 / 5) / Math.SQRT2); // 14
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
@@ -1198,9 +1204,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({ t: "ray", distance: 100, width: 5 })]
@@ -1219,9 +1225,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({
@@ -1246,9 +1252,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({
@@ -1274,9 +1280,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // width=40 stored → 40/20=2ft passed (not clamped to 5)
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
@@ -1290,9 +1296,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Second dialog is open; click Save
                 const options2 = global.foundry.applications.api.DialogV2.__lastOptions;
                 const inst2    = global.foundry.applications.api.DialogV2.__lastInstance;
@@ -1313,12 +1319,12 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Second dialog is open; click Cancel
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // The moved template should be deleted and the original data recreated
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenLastCalledWith(
                     "MeasuredTemplate", ["created-1"]
@@ -1335,22 +1341,22 @@ describe("Star Template Placer", () => {
                 // First move
                 $(global.foundry.applications.api.DialogV2.__lastInstance.element)
                     .find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 global.canvas.mousePosition = { x: 300, y: 250 };
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
 
                 // Second dialog open; do a second move
                 const { html: html2 } = openDialogHtml();
                 html2.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 global.canvas.mousePosition = { x: 500, y: 400 };
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
 
                 // Third dialog open; Cancel
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
 
                 // Both moves undone: last-placed template deleted and original position recreated
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenLastCalledWith(
@@ -1372,8 +1378,7 @@ describe("Star Template Placer", () => {
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                     expect.objectContaining({ t: "circle", distance: 30 }), expect.anything()
                 );
@@ -1390,8 +1395,7 @@ describe("Star Template Placer", () => {
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                     expect.objectContaining({ t: "rect", width: 30, distance: 40 * Math.SQRT2 }),
                     expect.anything()
@@ -1405,8 +1409,7 @@ describe("Star Template Placer", () => {
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                     expect.objectContaining({ t: "circle", distance: 7 / 5 }), expect.anything()
                 );
@@ -1418,9 +1421,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Open second dialog's move tab content
                 const options2 = global.foundry.applications.api.DialogV2.__lastOptions;
                 const inst2    = global.foundry.applications.api.DialogV2.__lastInstance;
@@ -1441,9 +1444,9 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // distance 100 → gridDist 5 → 20; angle preserved at 60
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
@@ -1464,17 +1467,17 @@ describe("Star Template Placer", () => {
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 // Delete t1
                 localHtml.find('tr[data-id="t1"] .stp-remove-template-btn').trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Move t2 (closes dialog, reopens after canvas click)
                 localHtml.find('tr[data-id="t2"] .stp-move-template-btn').trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Reopened dialog is open; Cancel
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.canvas.scene.deleteEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Rollback recreates the deleted t1 AND restores the moved t2's original
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
                 // The moved template's new copy is deleted as part of the move rollback
@@ -1492,17 +1495,17 @@ describe("Star Template Placer", () => {
                 // Move t1 to a new position (becomes created-1)
                 $(global.foundry.applications.api.DialogV2.__lastInstance.element)
                     .find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 await simulateCanvasClick();
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Reopened dialog; delete the moved template
                 const { html: html2 } = openDialogHtml();
                 html2.find(".stp-remove-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // Cancel — should restore exactly one template, at the original position
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(1);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
@@ -1516,7 +1519,7 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 $(global.foundry.applications.api.DialogV2.__lastInstance.element)
                     .find(".stp-move-template-btn").eq(0).trigger("click");
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.canvas.scene.createEmbeddedDocuments
                     .mockRejectedValueOnce(new Error("placement denied"))
@@ -1524,7 +1527,7 @@ describe("Star Template Placer", () => {
                 await simulateCanvasClick();
                 // One macrotask tick drains the whole microtask chain (delete → create-rejects →
                 // catch → create-to-restore); the mocks settle synchronously so no extra ticks are needed.
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 // First create (the moved copy) rejected; original is recreated at its start position
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenLastCalledWith(
@@ -1569,7 +1572,7 @@ describe("Star Template Placer", () => {
                 ]
             });
             document.querySelector(".stp-custom-btn").click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             expect(window.addEventListener).toHaveBeenCalledWith(
                 "pointerdown", expect.any(Function), { capture: true }
             );
@@ -1582,7 +1585,7 @@ describe("Star Template Placer", () => {
                 ]
             });
             document.querySelector(".stp-custom-btn").click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             await simulateCanvasClick();
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
@@ -1694,7 +1697,7 @@ describe("Star Template Placer", () => {
         it("allows reopening after the dialog is closed", async () => {
             document.querySelector(".stp-config-btn").click();
             global.foundry.applications.api.DialogV2.__resolveDialog(null);
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             global.foundry.applications.api.DialogV2.wait.mockClear();
             document.querySelector(".stp-config-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
@@ -2170,7 +2173,7 @@ describe("Star Template Placer", () => {
                 const html = openExtra();
                 html.find(".stp-hide-bar-checkbox").prop("checked", true).trigger("change");
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
             });
 
@@ -2261,7 +2264,7 @@ describe("Star Template Placer", () => {
                 localHtml.find("[data-tab='reset']").trigger("click");
                 localHtml.find(".stp-reset-position-btn").trigger("click");
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
-                await new Promise(r => setTimeout(r, 0));
+                await flushAsync();
                 expect(document.querySelector(".stp-template-bar").style.left).toBe("200px");
                 expect(document.querySelector(".stp-template-bar").style.top).toBe("150px");
             });
@@ -2285,11 +2288,11 @@ describe("Star Template Placer", () => {
             const btn = document.querySelector(".stp-custom-btn");
 
             btn.click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             await simulateCanvasClick();
 
             btn.click();
-            await new Promise(r => setTimeout(r, 0));
+            await flushAsync();
             await simulateCanvasClick();
 
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
