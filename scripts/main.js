@@ -572,7 +572,16 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             const id  = row.attr("data-id");
             const stagedTpl = canvas?.scene?.templates?.get(id);
             if (stagedTpl) {
-                pendingRemovalOriginals.set(id, templateToCreateData(stagedTpl.toObject()));
+                // If this template was moved earlier in this session, restoring it on cancel must
+                // recreate the original pre-move template, not the moved copy. Hand the move's
+                // original data to the removal rollback and drop the move entry so it isn't
+                // restored twice.
+                if (pendingMoveOriginals.has(id)) {
+                    pendingRemovalOriginals.set(id, pendingMoveOriginals.get(id));
+                    pendingMoveOriginals.delete(id);
+                } else {
+                    pendingRemovalOriginals.set(id, templateToCreateData(stagedTpl.toObject()));
+                }
                 await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [id]);
             }
             row.remove();

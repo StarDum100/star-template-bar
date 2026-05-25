@@ -1484,6 +1484,30 @@ describe("Star Template Placer", () => {
                     "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
                 );
             });
+
+            it("Cancel restores only one original when a template is moved then deleted", async () => {
+                global.canvas.mousePosition = { x: 300, y: 250 };
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                openConfigOnMoveTab([tpl]);
+                // Move t1 to a new position (becomes created-1)
+                $(global.foundry.applications.api.DialogV2.__lastInstance.element)
+                    .find(".stp-move-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                await simulateCanvasClick();
+                await new Promise(r => setTimeout(r, 0));
+                // Reopened dialog; delete the moved template
+                const { html: html2 } = openDialogHtml();
+                html2.find(".stp-remove-template-btn").eq(0).trigger("click");
+                await new Promise(r => setTimeout(r, 0));
+                // Cancel — should restore exactly one template, at the original position
+                global.canvas.scene.createEmbeddedDocuments.mockClear();
+                global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                await new Promise(r => setTimeout(r, 0));
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(1);
+                expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                    "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
+                );
+            });
         });
     });
 
