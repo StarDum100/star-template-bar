@@ -762,19 +762,49 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     });
 
     if (moveRequested) {
+        console.log(`${MODULE_TITLE} | moveRequested id:`, moveRequested);
+        console.log(`${MODULE_TITLE} | canvas.scene:`, canvas?.scene);
+        console.log(`${MODULE_TITLE} | canvas.scene.templates collection:`, canvas?.scene?.templates);
+        console.log(`${MODULE_TITLE} | all scene template ids:`, canvas?.scene?.templates?.contents?.map(t => t.id));
         const tpl = canvas?.scene?.templates?.get(moveRequested);
+        console.log(`${MODULE_TITLE} | tpl lookup result:`, tpl ?? "NOT FOUND");
+        console.log(`${MODULE_TITLE} | typeof canvas.scene.updateEmbeddedDocuments:`, typeof canvas?.scene?.updateEmbeddedDocuments);
         if (tpl) {
-            // Whitelist only the fields placeTemplate uses — avoids system hooks that transform distance
-            // when they see extra fields like _stats or texture in toObject() data.
             const raw = tpl.toObject();
-            const origData = pendingMoveOriginals.get(moveRequested) ?? {
-                t: raw.t, distance: raw.distance, angle: raw.angle, width: raw.width,
-                direction: raw.direction, fillColor: raw.fillColor, borderColor: raw.borderColor,
-                user: raw.user, flags: raw.flags, x: raw.x, y: raw.y,
-            };
+            console.log(`${MODULE_TITLE} | raw template data (x/y/t/distance):`, { x: raw.x, y: raw.y, t: raw.t, distance: raw.distance, _id: raw._id });
             const newPos = await pickNewPosition(raw);
+            console.log(`${MODULE_TITLE} | newPos from pickNewPosition:`, newPos);
             if (newPos) {
                 const roundedPos = { x: Math.round(newPos.x), y: Math.round(newPos.y) };
+                console.log(`${MODULE_TITLE} | roundedPos:`, roundedPos);
+                console.log(`${MODULE_TITLE} | position actually changed:`, roundedPos.x !== raw.x || roundedPos.y !== raw.y);
+                // Foundry v14 multiplies distance/width by grid.distance at creation time,
+                // so we must pass the original un-scaled values to avoid doubling the size.
+                const f        = raw.flags?.[MODULE_ID] ?? {};
+                const gridDist = canvas?.scene?.grid?.distance ?? 1;
+                let distance, width, direction;
+                if (f.distance != null || f.width != null || f.height != null) {
+                    // Module template: reconstruct original inputs from flags
+                    const fd = f.distance ?? 20;
+                    const fw = f.width    ?? fd;
+                    const fh = f.height;
+                    distance  = raw.t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
+                    width     = Math.max(5, fw ?? fd);
+                    direction = raw.t === "rect" ? 45 : (raw.direction ?? 0);
+                } else {
+                    // Non-module template: undo v14's grid.distance scaling
+                    distance  = raw.distance / gridDist;
+                    width     = (raw.width ?? 0) / gridDist;
+                    direction = raw.direction ?? 0;
+                }
+                console.log(`${MODULE_TITLE} | grid.distance:`, gridDist, "| distance to use:", distance, "| width to use:", width);
+
+                const origData = pendingMoveOriginals.get(moveRequested) ?? {
+                    t: raw.t, distance, angle: f.angle ?? raw.angle, width,
+                    direction, fillColor: raw.fillColor, borderColor: raw.borderColor,
+                    user: raw.user, flags: raw.flags, x: raw.x, y: raw.y,
+                };
+                console.log(`${MODULE_TITLE} | origData being sent to createEmbeddedDocuments:`, JSON.stringify(origData));
                 await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
                 pendingMoveOriginals.delete(moveRequested);
                 const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
@@ -782,6 +812,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     x: roundedPos.x,
                     y: roundedPos.y,
                 }]);
+                console.log(`${MODULE_TITLE} | newDoc after creation — distance:`, newDoc?.distance, "id:", newDoc?.id);
                 if (newDoc?.id) {
                     pendingMoveOriginals.set(newDoc.id, origData);
                 }

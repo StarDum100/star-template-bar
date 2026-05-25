@@ -5,6 +5,8 @@ const hookCallbacks = {};
 global.$ = $;
 global.Hooks = {
     once: jest.fn((event, cb) => { hookCallbacks[event] = cb; }),
+    on:   jest.fn(() => 0),
+    off:  jest.fn(),
 };
 global.game = {
     user: {
@@ -960,11 +962,10 @@ describe("Star Template Placer", () => {
                 // Second dialog is open; click Cancel
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await new Promise(r => setTimeout(r, 0));
-                // The moved template should be deleted on cancel
+                // The moved template should be deleted and the original data recreated
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenLastCalledWith(
                     "MeasuredTemplate", ["created-1"]
                 );
-                // The original data should be recreated at its original position
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenLastCalledWith(
                     "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
                 );
