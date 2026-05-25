@@ -473,7 +473,8 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     function renderMoveTab($html) {
         const movePanelEl = $html.find('[data-panel="move"]');
         const templates = (canvas?.scene?.templates?.contents ?? [])
-            .filter(t => !pendingRemovals.includes(t.id));
+            .filter(t => !pendingRemovals.includes(t.id))
+            .filter(t => game.user.isGM || (t.user?.id ?? t.user) === game.user.id);
         if (templates.length === 0) {
             movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
         } else {
@@ -855,7 +856,10 @@ Hooks.once("ready", () => {
             ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
             return;
         }
-        if (canvas.scene.templates.contents.length === 0) {
+        const movable = canvas.scene.templates.contents.filter(
+            t => game.user.isGM || (t.user?.id ?? t.user) === game.user.id
+        );
+        if (movable.length === 0) {
             ui.notifications.warn(`${MODULE_TITLE}: No templates to move.`);
             return;
         }

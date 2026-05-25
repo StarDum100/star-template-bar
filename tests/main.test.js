@@ -11,6 +11,7 @@ global.Hooks = {
 global.game = {
     user: {
         id: "user-001",
+        isGM: false,
         color: { css: "#4488ff" },
         getFlag:   jest.fn().mockReturnValue(undefined),
         setFlag:   jest.fn().mockResolvedValue(undefined),
@@ -137,6 +138,7 @@ async function triggerPlaceFromDialog(htmlModifier) {
 
 function setupBar(flagOverrides = {}) {
     const { barHidden, ...flagsOnly } = flagOverrides;
+    global.game.user.isGM = false;
     global.game.user.getFlag.mockImplementation((ns, key) => flagsOnly[key] ?? undefined);
     global.game.settings.get.mockImplementation((ns, key) => key === "barHidden" ? (barHidden ?? false) : false);
     global.canvas.scene.templates.contents = [];
@@ -177,7 +179,7 @@ function setupBar(flagOverrides = {}) {
 }
 
 function makeTemplate(id, user, t, distance) {
-    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance, x: 100, y: 100, hidden: false };
+    const originalData = { fillColor: "#ff4400", borderColor: "#ff4400", t, distance, x: 100, y: 100, hidden: false, user };
     return {
         id, user, t, distance,
         x: 100, y: 100, hidden: false,
@@ -188,8 +190,9 @@ function makeTemplate(id, user, t, distance) {
     };
 }
 
-function openConfigOnMoveTab(templates) {
+function openConfigOnMoveTab(templates, { isGM = false } = {}) {
     setupBar();
+    global.game.user.isGM = isGM;
     global.canvas.scene.templates.contents = templates;
     document.querySelector(".stp-move-btn").click();
     return openDialogHtml();
@@ -635,6 +638,24 @@ describe("Star Template Placer", () => {
             global.canvas.scene = originalScene;
         });
 
+        it("warns when templates exist but none belong to the current non-GM user", async () => {
+            global.ui.notifications.warn.mockClear();
+            global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
+            document.querySelector(".stp-move-btn").click();
+            await new Promise(r => setTimeout(r, 0));
+            expect(global.ui.notifications.warn).toHaveBeenCalledWith(
+                expect.stringContaining("No templates to move")
+            );
+        });
+
+        it("opens the dialog for a GM when all templates belong to other users", () => {
+            global.game.user.isGM = true;
+            global.foundry.applications.api.DialogV2.wait.mockClear();
+            global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
+            document.querySelector(".stp-move-btn").click();
+            expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
+        });
+
         it("does not open a dialog when there are no templates", async () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [];
@@ -689,14 +710,14 @@ describe("Star Template Placer", () => {
 
             it("shows the owner name when t.user is a User document (Foundry v14)", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                tpl.user = { name: "Gamemaster" };
+                tpl.user = { id: "user-001", name: "Gamemaster" };
                 const { html } = openConfigOnMoveTab([tpl]);
                 expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Gamemaster");
             });
 
             it("shows 'Unknown' when neither author nor game.users resolves", () => {
                 global.game.users.get.mockReturnValue(undefined);
-                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-999", "circle", 4)]);
+                const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-999", "circle", 4)], { isGM: true });
                 expect(html.find('[data-panel="move"] tbody td').eq(1).text()).toBe("Unknown");
             });
 
@@ -775,6 +796,55 @@ describe("Star Template Placer", () => {
             it("shows dash for angle when template is not a cone", () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
                 expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("—");
+            });
+
+            it("only shows templates owned by the current non-GM user", () => {
+                setupBar();
+                global.canvas.scene.templates.contents = [
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-999", "circle", 4),
+                ];
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find("[data-tab='move']").trigger("click");
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(1);
+                expect(html.find('[data-panel="move"] tbody tr[data-id="t1"]')).toHaveLength(1);
+                expect(html.find('[data-panel="move"] tbody tr[data-id="t2"]')).toHaveLength(0);
+            });
+
+            it("shows all templates for a GM", () => {
+                const { html } = openConfigOnMoveTab([
+                    makeTemplate("t1", "user-001", "circle", 4),
+                    makeTemplate("t2", "user-999", "circle", 4),
+                ], { isGM: true });
+                expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(2);
+            });
+
+            it("shows empty state when non-GM has no owned templates on the scene", () => {
+                setupBar();
+                global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find("[data-tab='move']").trigger("click");
+                expect(html.find(".stp-move-empty")).toHaveLength(1);
+            });
+
+            it("shows template when t.user is a v14 User document matching the current user", () => {
+                const tpl = makeTemplate("t1", "user-001", "circle", 4);
+                tpl.user = { id: "user-001", name: "Gamemaster" };
+                const { html } = openConfigOnMoveTab([tpl]);
+                expect(html.find('[data-panel="move"] tbody tr[data-id="t1"]')).toHaveLength(1);
+            });
+
+            it("hides template when t.user is a v14 User document belonging to another user", () => {
+                setupBar();
+                const tpl = makeTemplate("t1", "user-999", "circle", 4);
+                tpl.user = { id: "user-999", name: "OtherUser" };
+                global.canvas.scene.templates.contents = [tpl];
+                document.querySelector(".stp-config-btn").click();
+                const { html } = openDialogHtml();
+                html.find("[data-tab='move']").trigger("click");
+                expect(html.find('[data-panel="move"] tbody tr[data-id="t1"]')).toHaveLength(0);
             });
 
             it("shows an empty state message when there are no templates", () => {
