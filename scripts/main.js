@@ -1,3 +1,8 @@
+// IIFE so module-scoped declarations (MODULE_ID, MODULE_TITLE, etc.) never leak into a
+// shared/global scope. Sibling modules each declare `const MODULE_ID`; without this wrapper,
+// loading them in the same realm (e.g. as classic scripts, or a hot-reload re-eval) throws
+// "Identifier 'MODULE_ID' has already been declared".
+(function () {
 const MODULE_ID = "star-template-placer";
 const MODULE_TITLE = "Star Template Placer";
 
@@ -889,4 +894,7 @@ Hooks.once("ready", () => {
         openConfig(bar).finally(() => { configOpen = false; });
     });
 });
+
+if (typeof module !== "undefined") module.exports = {};
+})();
 
