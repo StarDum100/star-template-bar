@@ -102,11 +102,11 @@ require("../scripts/main.js");
 const _origWindowAEL = window.addEventListener.bind(window);
 window.addEventListener = jest.fn((...args) => _origWindowAEL(...args));
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Lets pending promise continuations settle before assertions run. A single
-// macrotask tick (setTimeout 0) drains the entire microtask queue — including
-// chained awaits like delete → create → catch → create — because the queue is
+// macrotask tick (setTimeout 0) drains the entire microtask queue â€” including
+// chained awaits like delete â†’ create â†’ catch â†’ create â€” because the queue is
 // fully emptied before the timer fires. The mocked DB ops resolve synchronously
 // (no real timers), so one flush is always enough regardless of chain length.
 const flushAsync = () => new Promise(r => setTimeout(r, 0));
@@ -132,7 +132,7 @@ async function simulateCanvasClick() {
 }
 
 async function triggerPlaceFromDialog(htmlModifier) {
-    document.querySelector(".stp-place-btn").click();
+    document.querySelector(".stb-place-btn").click();
     const { html, options } = openDialogHtml();
     if (htmlModifier) htmlModifier(html);
     const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
@@ -202,13 +202,13 @@ function openConfigOnMoveTab(templates, { isGM = false } = {}) {
     setupBar();
     global.game.user.isGM = isGM;
     global.canvas.scene.templates.contents = templates;
-    document.querySelector(".stp-move-btn").click();
+    document.querySelector(".stb-move-btn").click();
     return openDialogHtml();
 }
 
-// ── Star Template Placer (integration) ────────────────────────────────────
+// â”€â”€ Star Template Bar (integration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-describe("Star Template Placer", () => {
+describe("Star Template Bar", () => {
     describe("init hook", () => {
         it("registers an init hook", () => {
             expect(global.Hooks.once).toHaveBeenCalledWith("init", expect.any(Function));
@@ -218,7 +218,7 @@ describe("Star Template Placer", () => {
             global.game.settings.register.mockClear();
             hookCallbacks["init"]();
             expect(global.game.settings.register).toHaveBeenCalledWith(
-                "star-template-placer",
+                "star-template-bar",
                 "barHidden",
                 expect.objectContaining({ scope: "client", config: true, type: Boolean, default: false })
             );
@@ -236,13 +236,13 @@ describe("Star Template Placer", () => {
             it("hides the bar when called with true", () => {
                 setupBar();
                 onChange(true);
-                expect(document.querySelector(".stp-template-bar").style.display).toBe("none");
+                expect(document.querySelector(".stb-template-bar").style.display).toBe("none");
             });
 
             it("shows the bar when called with false", () => {
                 setupBar({ barHidden: true });
                 onChange(false);
-                expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
+                expect(document.querySelector(".stb-template-bar").style.display).not.toBe("none");
             });
         });
     });
@@ -251,47 +251,47 @@ describe("Star Template Placer", () => {
         beforeEach(() => { setupBar(); });
 
         it("appends the template bar to body", () => {
-            expect(document.querySelector(".stp-template-bar")).not.toBeNull();
+            expect(document.querySelector(".stb-template-bar")).not.toBeNull();
         });
 
         it("renders a Place button", () => {
-            expect(document.querySelector(".stp-place-btn")).not.toBeNull();
+            expect(document.querySelector(".stb-place-btn")).not.toBeNull();
         });
 
         it("renders a Move button", () => {
-            expect(document.querySelector(".stp-move-btn")).not.toBeNull();
+            expect(document.querySelector(".stb-move-btn")).not.toBeNull();
         });
 
         it("renders a config button", () => {
-            expect(document.querySelector(".stp-config-btn")).not.toBeNull();
+            expect(document.querySelector(".stb-config-btn")).not.toBeNull();
         });
 
         it("renders a drag handle", () => {
-            expect(document.querySelector(".stp-bar-handle")).not.toBeNull();
+            expect(document.querySelector(".stb-bar-handle")).not.toBeNull();
         });
 
         it("hides the bar on load when barHidden is true", () => {
             setupBar({ barHidden: true });
-            expect(document.querySelector(".stp-template-bar").style.display).toBe("none");
+            expect(document.querySelector(".stb-template-bar").style.display).toBe("none");
         });
 
         it("shows the bar on load when barHidden is not set", () => {
             setupBar();
-            expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
+            expect(document.querySelector(".stb-template-bar").style.display).not.toBe("none");
         });
     });
 
     describe("bar positioning", () => {
         it("applies saved position from barPosition flag", () => {
             setupBar({ barPosition: { left: 200, top: 150 } });
-            const bar = document.querySelector(".stp-template-bar");
+            const bar = document.querySelector(".stb-template-bar");
             expect(bar.style.left).toBe("200px");
             expect(bar.style.top).toBe("150px");
         });
 
         it("applies a default top of 10px when no barPosition flag is set", () => {
             setupBar();
-            expect(document.querySelector(".stp-template-bar").style.top).toBe("10px");
+            expect(document.querySelector(".stb-template-bar").style.top).toBe("10px");
         });
 
         it("defers position calculation to requestAnimationFrame so outerWidth is accurate", () => {
@@ -299,8 +299,8 @@ describe("Star Template Placer", () => {
             global.requestAnimationFrame = cb => { rafCb = cb; };
             try {
                 setupBar();
-                // RAF scheduled but not yet fired — position not yet applied
-                const bar = document.querySelector(".stp-template-bar");
+                // RAF scheduled but not yet fired â€” position not yet applied
+                const bar = document.querySelector(".stb-template-bar");
                 expect(bar.style.left).toBe("");
                 expect(bar.style.top).toBe("");
                 // After RAF fires, default position is applied
@@ -317,10 +317,10 @@ describe("Star Template Placer", () => {
             try {
                 setupBar({ barHidden: true });
                 // Bar should still be visible before RAF fires (so layout can be measured)
-                expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
+                expect(document.querySelector(".stb-template-bar").style.display).not.toBe("none");
                 rafCb();
                 // After RAF: position applied and bar hidden
-                expect(document.querySelector(".stp-template-bar").style.display).toBe("none");
+                expect(document.querySelector(".stb-template-bar").style.display).toBe("none");
             } finally {
                 global.requestAnimationFrame = cb => cb();
             }
@@ -329,12 +329,12 @@ describe("Star Template Placer", () => {
         it("saves position to flag on drag end", () => {
             setupBar();
             global.game.user.setFlag.mockClear();
-            const handle = document.querySelector(".stp-bar-handle");
+            const handle = document.querySelector(".stb-bar-handle");
             $(handle).trigger({ type: "mousedown", clientX: 50, clientY: 50, preventDefault: () => {} });
-            $(document).trigger({ type: "mousemove.stp-drag", clientX: 80, clientY: 70 });
-            $(document).trigger("mouseup.stp-drag");
+            $(document).trigger({ type: "mousemove.stb-drag", clientX: 80, clientY: 70 });
+            $(document).trigger("mouseup.stb-drag");
             expect(global.game.user.setFlag).toHaveBeenCalledWith(
-                "star-template-placer", "barPosition",
+                "star-template-bar", "barPosition",
                 expect.objectContaining({ left: expect.any(Number), top: expect.any(Number) })
             );
         });
@@ -345,14 +345,14 @@ describe("Star Template Placer", () => {
 
         it("opens a dialog when Place is clicked", () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
         it("dialog has a shape select with circle, cone, ray, and rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            const options = [...html.find(".stp-type option")].map(o => o.value);
+            const options = [...html.find(".stb-type option")].map(o => o.value);
             expect(options).toContain("circle");
             expect(options).toContain("cone");
             expect(options).toContain("ray");
@@ -360,114 +360,114 @@ describe("Star Template Placer", () => {
         });
 
         it("dialog has a distance input defaulting to 20", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-distance").val()).toBe("20");
+            expect(html.find(".stb-distance").val()).toBe("20");
         });
 
         it("dialog has a color input", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-color").length).toBe(1);
+            expect(html.find(".stb-color").length).toBe(1);
         });
 
         it("cone angle row is hidden by default", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-cone-row").css("display")).toBe("none");
+            expect(html.find(".stb-cone-row").css("display")).toBe("none");
         });
 
         it("cone angle row shows when shape is changed to cone", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("cone").trigger("change");
-            expect(html.find(".stp-cone-row").css("display")).not.toBe("none");
+            html.find(".stb-type").val("cone").trigger("change");
+            expect(html.find(".stb-cone-row").css("display")).not.toBe("none");
         });
 
         it("cone angle row hides again when shape is changed away from cone", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("cone").trigger("change");
-            html.find(".stp-type").val("circle").trigger("change");
-            expect(html.find(".stp-cone-row").css("display")).toBe("none");
+            html.find(".stb-type").val("cone").trigger("change");
+            html.find(".stb-type").val("circle").trigger("change");
+            expect(html.find(".stb-cone-row").css("display")).toBe("none");
         });
 
         it("width row is hidden by default", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-width-row").css("display")).toBe("none");
+            expect(html.find(".stb-width-row").css("display")).toBe("none");
         });
 
         it("width row shows when shape is changed to ray", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("ray").trigger("change");
-            expect(html.find(".stp-width-row").css("display")).not.toBe("none");
+            html.find(".stb-type").val("ray").trigger("change");
+            expect(html.find(".stb-width-row").css("display")).not.toBe("none");
         });
 
         it("width row shows when shape is changed to rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("rect").trigger("change");
-            expect(html.find(".stp-width-row").css("display")).not.toBe("none");
+            html.find(".stb-type").val("rect").trigger("change");
+            expect(html.find(".stb-width-row").css("display")).not.toBe("none");
         });
 
         it("height row is hidden by default", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stp-height-row").css("display")).toBe("none");
+            expect(html.find(".stb-height-row").css("display")).toBe("none");
         });
 
         it("height row shows when shape is changed to rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("rect").trigger("change");
-            expect(html.find(".stp-height-row").css("display")).not.toBe("none");
+            html.find(".stb-type").val("rect").trigger("change");
+            expect(html.find(".stb-height-row").css("display")).not.toBe("none");
         });
 
         it("height row hides when shape is changed away from rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("rect").trigger("change");
-            html.find(".stp-type").val("circle").trigger("change");
-            expect(html.find(".stp-height-row").css("display")).toBe("none");
+            html.find(".stb-type").val("rect").trigger("change");
+            html.find(".stb-type").val("circle").trigger("change");
+            expect(html.find(".stb-height-row").css("display")).toBe("none");
         });
 
         it("size row is hidden when shape is rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("rect").trigger("change");
-            expect(html.find(".stp-distance-row").css("display")).toBe("none");
+            html.find(".stb-type").val("rect").trigger("change");
+            expect(html.find(".stb-distance-row").css("display")).toBe("none");
         });
 
         it("size row is visible when shape is changed away from rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("rect").trigger("change");
-            html.find(".stp-type").val("circle").trigger("change");
-            expect(html.find(".stp-distance-row").css("display")).not.toBe("none");
+            html.find(".stb-type").val("rect").trigger("change");
+            html.find(".stb-type").val("circle").trigger("change");
+            expect(html.find(".stb-distance-row").css("display")).not.toBe("none");
         });
 
         it("width row hides again when shape is changed away from ray", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("ray").trigger("change");
-            html.find(".stp-type").val("circle").trigger("change");
-            expect(html.find(".stp-width-row").css("display")).toBe("none");
+            html.find(".stb-type").val("ray").trigger("change");
+            html.find(".stb-type").val("circle").trigger("change");
+            expect(html.find(".stb-width-row").css("display")).toBe("none");
         });
 
         it("width row hides again when shape is changed away from rect", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            html.find(".stp-type").val("rect").trigger("change");
-            html.find(".stp-type").val("circle").trigger("change");
-            expect(html.find(".stp-width-row").css("display")).toBe("none");
+            html.find(".stb-type").val("rect").trigger("change");
+            html.find(".stb-type").val("circle").trigger("change");
+            expect(html.find(".stb-width-row").css("display")).toBe("none");
         });
 
         it("passes width to createEmbeddedDocuments for ray", async () => {
             await triggerPlaceFromDialog(html => {
-                html.find(".stp-type").val("ray").trigger("change");
-                html.find(".stp-width").val("30");
+                html.find(".stb-type").val("ray").trigger("change");
+                html.find(".stb-width").val("30");
             });
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
@@ -477,9 +477,9 @@ describe("Star Template Placer", () => {
 
         it("passes width and height * sqrt(2) for rect distance and stores dimensions in flags", async () => {
             await triggerPlaceFromDialog(html => {
-                html.find(".stp-type").val("rect").trigger("change");
-                html.find(".stp-width").val("30");
-                html.find(".stp-height").val("40");
+                html.find(".stb-type").val("rect").trigger("change");
+                html.find(".stb-width").val("30");
+                html.find(".stb-height").val("40");
             });
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
@@ -488,14 +488,14 @@ describe("Star Template Placer", () => {
                     width: 30,
                     distance: 40 * Math.SQRT2,
                     flags: expect.objectContaining({
-                        "star-template-placer": expect.objectContaining({ width: 30, height: 40 })
+                        "star-template-bar": expect.objectContaining({ width: 30, height: 40 })
                     })
                 })]
             );
         });
 
         it("Place button registers a canvas click listener for placement", async () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
             const placeBtn  = options.buttons.find(b => b.action === "place");
@@ -508,7 +508,7 @@ describe("Star Template Placer", () => {
         });
 
         it("adds a preview object to canvas.templates.preview while waiting for placement", async () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
             const placeBtn  = options.buttons.find(b => b.action === "place");
@@ -519,12 +519,12 @@ describe("Star Template Placer", () => {
         });
 
         it("preview document includes width and height * sqrt(2) as distance for rect", async () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            $(container).find(".stp-type").val("rect").trigger("change");
-            $(container).find(".stp-width").val("30");
-            $(container).find(".stp-height").val("40");
+            $(container).find(".stb-type").val("rect").trigger("change");
+            $(container).find(".stb-width").val("30");
+            $(container).find(".stb-height").val("40");
             global.CONFIG.MeasuredTemplate.documentClass.mockClear();
             const placeBtn = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
@@ -536,11 +536,11 @@ describe("Star Template Placer", () => {
         });
 
         it("preview document includes width for ray", async () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
-            $(container).find(".stp-type").val("ray").trigger("change");
-            $(container).find(".stp-width").val("10");
+            $(container).find(".stb-type").val("ray").trigger("change");
+            $(container).find(".stb-width").val("10");
             global.CONFIG.MeasuredTemplate.documentClass.mockClear();
             const placeBtn = options.buttons.find(b => b.action === "place");
             placeBtn.callback(null, null, { element: container });
@@ -557,7 +557,7 @@ describe("Star Template Placer", () => {
         });
 
         it("updates the preview position on pointermove", async () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
             const placeBtn  = options.buttons.find(b => b.action === "place");
@@ -587,7 +587,7 @@ describe("Star Template Placer", () => {
         });
 
         it("clamps distance to minimum 5", async () => {
-            await triggerPlaceFromDialog(html => html.find(".stp-distance").val("-10"));
+            await triggerPlaceFromDialog(html => html.find(".stb-distance").val("-10"));
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
                 [expect.objectContaining({ distance: 5 })]
@@ -598,7 +598,7 @@ describe("Star Template Placer", () => {
             const originalScene = global.canvas.scene;
             global.canvas.scene = null;
             global.ui.notifications.warn.mockClear();
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const { options } = openDialogHtml();
             const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
             const placeBtn  = options.buttons.find(b => b.action === "place");
@@ -615,7 +615,7 @@ describe("Star Template Placer", () => {
         });
 
         it("dialog title is 'Place Template'", () => {
-            document.querySelector(".stp-place-btn").click();
+            document.querySelector(".stb-place-btn").click();
             const options = global.foundry.applications.api.DialogV2.__lastOptions;
             expect(options.window.title).toBe("Place Template");
         });
@@ -627,7 +627,7 @@ describe("Star Template Placer", () => {
         it("warns when there are no templates to move", async () => {
             global.ui.notifications.warn.mockClear();
             global.canvas.scene.templates.contents = [];
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No templates to move")
@@ -638,7 +638,7 @@ describe("Star Template Placer", () => {
             const originalScene = global.canvas.scene;
             global.canvas.scene = null;
             global.ui.notifications.warn.mockClear();
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No active scene")
@@ -649,7 +649,7 @@ describe("Star Template Placer", () => {
         it("warns when templates exist but none belong to the current non-GM user", async () => {
             global.ui.notifications.warn.mockClear();
             global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             await flushAsync();
             expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                 expect.stringContaining("No templates to move")
@@ -660,14 +660,14 @@ describe("Star Template Placer", () => {
             global.game.user.isGM = true;
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
         it("does not open a dialog when there are no templates", async () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [];
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             await flushAsync();
             expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
         });
@@ -675,18 +675,18 @@ describe("Star Template Placer", () => {
         it("opens the config dialog when templates exist", () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
             global.canvas.scene.templates.contents = [makeTemplate("t1", "user-001", "circle", 4)];
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
         it("opens with the Move tab active", () => {
             const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-            expect(html.find(".stp-tab.stp-tab-active").data("tab")).toBe("move");
+            expect(html.find(".stb-tab.stb-tab-active").data("tab")).toBe("move");
         });
 
         it("Move tab panel is visible on open", () => {
             const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-            expect(html.find("[data-panel='move']").hasClass("stp-tab-panel-hidden")).toBe(false);
+            expect(html.find("[data-panel='move']").hasClass("stb-tab-panel-hidden")).toBe(false);
         });
 
         describe("move tab content", () => {
@@ -700,7 +700,7 @@ describe("Star Template Placer", () => {
 
             it("shows the template name from flags when present", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                tpl.flags = { "star-template-placer": { name: "Fireball" } };
+                tpl.flags = { "star-template-bar": { name: "Fireball" } };
                 const { html } = openConfigOnMoveTab([tpl]);
                 expect(html.find('[data-panel="move"] tbody td').eq(0).text()).toBe("Fireball");
             });
@@ -736,23 +736,23 @@ describe("Star Template Placer", () => {
 
             it("shows a color swatch with the template fill color", () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                const swatch = html.find('[data-panel="move"] .stp-color-swatch');
+                const swatch = html.find('[data-panel="move"] .stb-color-swatch');
                 expect(swatch).toHaveLength(1);
                 expect(swatch.attr("style")).toContain("#ff4400");
             });
 
             it("divides stored distance by grid.size/20 to display feet", () => {
-                // stored distance = 100, gridDist = (100/20) = 5 → 100/5 = 20ft
+                // stored distance = 100, gridDist = (100/20) = 5 â†’ 100/5 = 20ft
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 100)]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
-            it("shows distance × width for ray templates from template data", () => {
-                // stored distance=100 → gridDist=5 → 20ft; stored width=100 → gridWidthScale=20 → 5ft
+            it("shows distance Ã— width for ray templates from template data", () => {
+                // stored distance=100 â†’ gridDist=5 â†’ 20ft; stored width=100 â†’ gridWidthScale=20 â†’ 5ft
                 const tpl = makeTemplate("t1", "user-001", "ray", 100);
                 tpl.width = 100;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 5ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft Ã— 5ft");
             });
 
             it("ray with width=0 shows 0ft width, not distance", () => {
@@ -760,32 +760,32 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 100);
                 tpl.width = 0;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 0ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft Ã— 0ft");
             });
 
-            it("shows distance × width for ray templates from flags", () => {
+            it("shows distance Ã— width for ray templates from flags", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 4);
-                tpl.flags = { "star-template-placer": { distance: 100, width: 5 } };
+                tpl.flags = { "star-template-bar": { distance: 100, width: 5 } };
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("100ft × 5ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("100ft Ã— 5ft");
             });
 
-            it("shows width × height for rect from flags in the move tab", () => {
+            it("shows width Ã— height for rect from flags in the move tab", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
-                tpl.flags = { "star-template-placer": { width: 30, height: 40 } };
+                tpl.flags = { "star-template-bar": { width: 30, height: 40 } };
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("30ft × 40ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("30ft Ã— 40ft");
             });
 
             it("shows computed distance for rect when flags are absent", () => {
-                // stored=100, gridDist=5 → 20ft; direction=0 so no √2 correction
+                // stored=100, gridDist=5 â†’ 20ft; direction=0 so no âˆš2 correction
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 const { html } = openConfigOnMoveTab([tpl]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
             it("shows side length for direction-45 rect when flags are absent", () => {
-                // stored=100, gridDist=5 → dist=20 → side=round(20/√2)=14ft
+                // stored=100, gridDist=5 â†’ dist=20 â†’ side=round(20/âˆš2)=14ft
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 tpl.direction = 45;
                 const { html } = openConfigOnMoveTab([tpl]);
@@ -798,12 +798,12 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "cone", 4);
                 tpl.angle = 90;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("90°");
+                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("90Â°");
             });
 
             it("shows dash for angle when template is not a cone", () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("—");
+                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("â€”");
             });
 
             it("only shows templates owned by the current non-GM user", () => {
@@ -812,7 +812,7 @@ describe("Star Template Placer", () => {
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-999", "circle", 4),
                 ];
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='move']").trigger("click");
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(1);
@@ -831,10 +831,10 @@ describe("Star Template Placer", () => {
             it("shows empty state when non-GM has no owned templates on the scene", () => {
                 setupBar();
                 global.canvas.scene.templates.contents = [makeTemplate("t1", "user-999", "circle", 4)];
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='move']").trigger("click");
-                expect(html.find(".stp-move-empty")).toHaveLength(1);
+                expect(html.find(".stb-move-empty")).toHaveLength(1);
             });
 
             it("shows template when t.user is a v14 User document matching the current user", () => {
@@ -849,7 +849,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-999", "circle", 4);
                 tpl.user = { id: "user-999", name: "OtherUser" };
                 global.canvas.scene.templates.contents = [tpl];
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='move']").trigger("click");
                 expect(html.find('[data-panel="move"] tbody tr[data-id="t1"]')).toHaveLength(0);
@@ -858,10 +858,10 @@ describe("Star Template Placer", () => {
             it("shows an empty state message when there are no templates", () => {
                 setupBar();
                 global.canvas.scene.templates.contents = [];
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='move']").trigger("click");
-                expect(html.find(".stp-move-empty").length).toBe(1);
+                expect(html.find(".stb-move-empty").length).toBe(1);
             });
 
             it("each row has a delete button", () => {
@@ -869,7 +869,7 @@ describe("Star Template Placer", () => {
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "circle", 4),
                 ]);
-                expect(html.find(".stp-remove-template-btn")).toHaveLength(2);
+                expect(html.find(".stb-remove-template-btn")).toHaveLength(2);
             });
 
             it("each row has an edit/move button", () => {
@@ -877,13 +877,13 @@ describe("Star Template Placer", () => {
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "circle", 4),
                 ]);
-                expect(html.find(".stp-move-template-btn")).toHaveLength(2);
+                expect(html.find(".stb-move-template-btn")).toHaveLength(2);
             });
 
             it("deletes the template immediately when delete button is clicked", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(global.canvas.scene.deleteEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate", ["t1"]
@@ -893,7 +893,7 @@ describe("Star Template Placer", () => {
             async function deleteAndCancel(tpl) {
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-remove-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
@@ -909,7 +909,7 @@ describe("Star Template Placer", () => {
             });
 
             it("recreated template uses unscaled distance for non-module template on Cancel", async () => {
-                // stored distance=100, gridDist=5 → createEmbeddedDocuments should receive 100/5=20
+                // stored distance=100, gridDist=5 â†’ createEmbeddedDocuments should receive 100/5=20
                 const tpl = makeTemplate("t1", "user-001", "circle", 100);
                 await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
@@ -922,7 +922,7 @@ describe("Star Template Placer", () => {
                 tpl.toObject.mockReturnValue({
                     t: "circle", distance: 100, x: 100, y: 100,
                     fillColor: "#ff4400", borderColor: "#ff4400", user: "user-001",
-                    flags: { "star-template-placer": { distance: 30 } },
+                    flags: { "star-template-bar": { distance: 30 } },
                 });
                 await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
@@ -935,14 +935,14 @@ describe("Star Template Placer", () => {
                 tpl.toObject.mockReturnValue({
                     fillColor: "#ff4400", borderColor: "#ff4400", t: "circle", distance: 4,
                     x: 100, y: 100, hidden: false, user: "user-001",
-                    flags: { "star-template-placer": { name: "Fireball", distance: 20 } },
+                    flags: { "star-template-bar": { name: "Fireball", distance: 20 } },
                 });
                 await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({
                         flags: expect.objectContaining({
-                            "star-template-placer": expect.objectContaining({ name: "Fireball", distance: 20 }),
+                            "star-template-bar": expect.objectContaining({ name: "Fireball", distance: 20 }),
                         }),
                     })]
                 );
@@ -961,7 +961,7 @@ describe("Star Template Placer", () => {
                     [expect.objectContaining({
                         t: "cone", angle: 75,
                         flags: expect.objectContaining({
-                            "star-template-placer": expect.objectContaining({ distance: 20, angle: 75, _nonModule: true }),
+                            "star-template-bar": expect.objectContaining({ distance: 20, angle: 75, _nonModule: true }),
                         }),
                     })]
                 );
@@ -973,9 +973,9 @@ describe("Star Template Placer", () => {
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "circle", 6),
                 ]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.canvas.scene.createEmbeddedDocuments
@@ -992,7 +992,7 @@ describe("Star Template Placer", () => {
             it("does not call deleteEmbeddedDocuments again on Save (already deleted on click)", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html, options } = openConfigOnMoveTab([tpl]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 global.canvas.scene.deleteEmbeddedDocuments.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
@@ -1004,26 +1004,26 @@ describe("Star Template Placer", () => {
             it("pending-deleted template does not reappear when Move tab is re-entered", async () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 html.find("[data-tab='templates']").trigger("click");
                 html.find("[data-tab='move']").trigger("click");
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
-                expect(html.find(".stp-move-empty").length).toBe(1);
+                expect(html.find(".stb-move-empty").length).toBe(1);
             });
 
             it("removes the row from the table after delete", async () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
             });
 
             it("shows empty state when last template is deleted", async () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
-                expect(html.find(".stp-move-empty").length).toBe(1);
+                expect(html.find(".stb-move-empty").length).toBe(1);
             });
 
             it("only removes the clicked row, leaving others", async () => {
@@ -1031,7 +1031,7 @@ describe("Star Template Placer", () => {
                     makeTemplate("t1", "user-001", "circle", 4),
                     makeTemplate("t2", "user-001", "circle", 6),
                 ]);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(1);
                 expect(html.find('[data-panel="move"] tbody tr[data-id="t2"]')).toHaveLength(1);
@@ -1041,7 +1041,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 global.canvas.scene.templates.get.mockReturnValue(undefined);
-                html.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(html.find('[data-panel="move"] tbody tr[data-id]')).toHaveLength(0);
                 expect(global.canvas.scene.deleteEmbeddedDocuments).not.toHaveBeenCalled();
@@ -1064,7 +1064,7 @@ describe("Star Template Placer", () => {
                 it("does not execute a script tag in the template name flag", () => {
                     window.__xssNameFlag = undefined;
                     const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                    tpl.flags = { "star-template-placer": { name: "<script>window.__xssNameFlag=true</script>" } };
+                    tpl.flags = { "star-template-bar": { name: "<script>window.__xssNameFlag=true</script>" } };
                     openConfigOnMoveTab([tpl]);
                     expect(window.__xssNameFlag).toBeUndefined();
                 });
@@ -1072,7 +1072,7 @@ describe("Star Template Placer", () => {
                 it("does not execute an img onerror payload in the template name flag", () => {
                     window.__xssNameImg = undefined;
                     const tpl = makeTemplate("t1", "user-001", "circle", 4);
-                    tpl.flags = { "star-template-placer": { name: '<img src=x onerror="window.__xssNameImg=true">' } };
+                    tpl.flags = { "star-template-bar": { name: '<img src=x onerror="window.__xssNameImg=true">' } };
                     openConfigOnMoveTab([tpl]);
                     expect(window.__xssNameImg).toBeUndefined();
                 });
@@ -1081,7 +1081,7 @@ describe("Star Template Placer", () => {
                     const tpl = makeTemplate("t1", "user-001", "circle", 4);
                     tpl.fillColor = "red;background:url(http://evil/?leak)";
                     const { html } = openConfigOnMoveTab([tpl]);
-                    const style = html.find('[data-panel="move"] .stp-color-swatch').attr("style");
+                    const style = html.find('[data-panel="move"] .stb-color-swatch').attr("style");
                     expect(style).not.toContain("evil");
                     expect(style).toContain("#000000");
                 });
@@ -1090,7 +1090,7 @@ describe("Star Template Placer", () => {
                     const tpl = makeTemplate("t1", "user-001", "circle", 4);
                     tpl.fillColor = "#abcdef";
                     const { html } = openConfigOnMoveTab([tpl]);
-                    expect(html.find('[data-panel="move"] .stp-color-swatch').attr("style")).toContain("#abcdef");
+                    expect(html.find('[data-panel="move"] .stb-color-swatch').attr("style")).toContain("#abcdef");
                 });
             });
 
@@ -1100,12 +1100,12 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 100);
                 tpl.width = 100;
                 global.canvas.scene.templates.contents = [tpl];
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='move']").trigger("click");
                 const sizeCell = html.find('[data-panel="move"] tbody td').eq(3).text();
                 expect(sizeCell).not.toContain("Infinity");
-                expect(sizeCell).toBe("20ft × 1ft");
+                expect(sizeCell).toBe("20ft Ã— 1ft");
             });
         });
 
@@ -1114,7 +1114,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 const { html } = openConfigOnMoveTab([tpl]);
                 const instance = global.foundry.applications.api.DialogV2.__lastInstance;
-                html.find(".stp-move-template-btn").eq(0).trigger("click");
+                html.find(".stb-move-template-btn").eq(0).trigger("click");
                 expect(instance.close).toHaveBeenCalled();
             });
 
@@ -1123,7 +1123,7 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 window.addEventListener.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 // Close resolves the dialog promise
                 await flushAsync();
                 expect(window.addEventListener).toHaveBeenCalledWith(
@@ -1136,7 +1136,7 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 global.foundry.applications.api.DialogV2.wait.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1144,7 +1144,7 @@ describe("Star Template Placer", () => {
                 const lastOptions = global.foundry.applications.api.DialogV2.__lastOptions;
                 const reopened = document.createElement("div");
                 reopened.innerHTML = lastOptions.content;
-                expect($(reopened).find(".stp-tab.stp-tab-active").data("tab")).toBe("move");
+                expect($(reopened).find(".stb-tab.stb-tab-active").data("tab")).toBe("move");
             });
 
             it("canvas click immediately moves the template to the new position", async () => {
@@ -1152,7 +1152,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1166,7 +1166,7 @@ describe("Star Template Placer", () => {
 
             it("moving a non-module direction-45 rect injects side-length flags", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // stored distance=100 → gridDist=5 → input=20 → side = round(20/√2) = 14
+                // stored distance=100 â†’ gridDist=5 â†’ input=20 â†’ side = round(20/âˆš2) = 14
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 tpl.toObject.mockReturnValue({
                     t: "rect", distance: 100, width: 0, direction: 45,
@@ -1175,7 +1175,7 @@ describe("Star Template Placer", () => {
                 });
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1184,7 +1184,7 @@ describe("Star Template Placer", () => {
                     "MeasuredTemplate",
                     [expect.objectContaining({
                         flags: expect.objectContaining({
-                            "star-template-placer": expect.objectContaining({
+                            "star-template-bar": expect.objectContaining({
                                 width: side, height: side, _nonModuleRect: true,
                             }),
                         }),
@@ -1194,7 +1194,7 @@ describe("Star Template Placer", () => {
 
             it("moving a non-module ray divides width by gridWidthScale (size/distance)", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // grid.size=100, grid.distance=5 → gridWidthScale=20; stored width=100 → passes 100/20=5
+                // grid.size=100, grid.distance=5 â†’ gridWidthScale=20; stored width=100 â†’ passes 100/20=5
                 const tpl = makeTemplate("t1", "user-001", "ray", 500);
                 tpl.toObject.mockReturnValue({
                     t: "ray", distance: 500, width: 100, direction: 0,
@@ -1203,7 +1203,7 @@ describe("Star Template Placer", () => {
                 });
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1215,7 +1215,7 @@ describe("Star Template Placer", () => {
 
             it("moving a non-module ray stores distance and width as module flags", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // distance=500→100ft, width=100→5ft; stored flags should have {distance:100,width:5,_nonModule:true}
+                // distance=500â†’100ft, width=100â†’5ft; stored flags should have {distance:100,width:5,_nonModule:true}
                 const tpl = makeTemplate("t1", "user-001", "ray", 500);
                 tpl.toObject.mockReturnValue({
                     t: "ray", distance: 500, width: 100, direction: 0,
@@ -1224,7 +1224,7 @@ describe("Star Template Placer", () => {
                 });
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1232,7 +1232,7 @@ describe("Star Template Placer", () => {
                     "MeasuredTemplate",
                     [expect.objectContaining({
                         flags: expect.objectContaining({
-                            "star-template-placer": expect.objectContaining({
+                            "star-template-bar": expect.objectContaining({
                                 distance: 100, width: 5, _nonModule: true,
                             }),
                         }),
@@ -1242,7 +1242,7 @@ describe("Star Template Placer", () => {
 
             it("moving a non-module circle stores distance as module flags", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // distance=20→4ft (20/5=4); stored flags should have {distance:4,_nonModule:true}
+                // distance=20â†’4ft (20/5=4); stored flags should have {distance:4,_nonModule:true}
                 const tpl = makeTemplate("t1", "user-001", "circle", 20);
                 tpl.toObject.mockReturnValue({
                     t: "circle", distance: 20, width: 0, direction: 0,
@@ -1251,7 +1251,7 @@ describe("Star Template Placer", () => {
                 });
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1259,7 +1259,7 @@ describe("Star Template Placer", () => {
                     "MeasuredTemplate",
                     [expect.objectContaining({
                         flags: expect.objectContaining({
-                            "star-template-placer": expect.objectContaining({
+                            "star-template-bar": expect.objectContaining({
                                 distance: 4, _nonModule: true,
                             }),
                         }),
@@ -1275,15 +1275,15 @@ describe("Star Template Placer", () => {
                 tpl.toObject.mockReturnValue({
                     t: "ray", distance: 500, width: 40, direction: 0,
                     x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
-                    flags: { "star-template-placer": { distance: 100, width: 2, _nonModule: true } },
+                    flags: { "star-template-bar": { distance: 100, width: 2, _nonModule: true } },
                 });
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
-                // width=40 stored → 40/20=2ft passed (not clamped to 5)
+                // width=40 stored â†’ 40/20=2ft passed (not clamped to 5)
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({ width: 2 })]
@@ -1295,7 +1295,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1318,7 +1318,7 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1340,7 +1340,7 @@ describe("Star Template Placer", () => {
 
                 // First move
                 $(global.foundry.applications.api.DialogV2.__lastInstance.element)
-                    .find(".stp-move-template-btn").eq(0).trigger("click");
+                    .find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 global.canvas.mousePosition = { x: 300, y: 250 };
                 await simulateCanvasClick();
@@ -1348,7 +1348,7 @@ describe("Star Template Placer", () => {
 
                 // Second dialog open; do a second move
                 const { html: html2 } = openDialogHtml();
-                html2.find(".stp-move-template-btn").eq(0).trigger("click");
+                html2.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 global.canvas.mousePosition = { x: 500, y: 400 };
                 await simulateCanvasClick();
@@ -1372,29 +1372,29 @@ describe("Star Template Placer", () => {
                 tpl.toObject.mockReturnValue({
                     t: "circle", distance: 4, x: 100, y: 100,
                     fillColor: "#ff4400", borderColor: "#ff4400",
-                    flags: { "star-template-placer": { distance: 30 } },
+                    flags: { "star-template-bar": { distance: 30 } },
                 });
                 openConfigOnMoveTab([tpl]);
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                     expect.objectContaining({ t: "circle", distance: 30 }), expect.anything()
                 );
             });
 
-            it("preview for rect uses flag width and height × SQRT2 as distance", async () => {
+            it("preview for rect uses flag width and height Ã— SQRT2 as distance", async () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 999);
                 tpl.toObject.mockReturnValue({
                     t: "rect", distance: 999, width: 999, direction: 45, x: 100, y: 100,
                     fillColor: "#ff4400", borderColor: "#ff4400",
-                    flags: { "star-template-placer": { width: 30, height: 40 } },
+                    flags: { "star-template-bar": { width: 30, height: 40 } },
                 });
                 openConfigOnMoveTab([tpl]);
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                     expect.objectContaining({ t: "rect", width: 30, distance: 40 * Math.SQRT2 }),
@@ -1403,24 +1403,24 @@ describe("Star Template Placer", () => {
             });
 
             it("preview corrects v14 scaling for non-module templates", async () => {
-                // Stored distance=7 with grid.size=100 → gridDist=5 → preview distance=7/5=1.4
+                // Stored distance=7 with grid.size=100 â†’ gridDist=5 â†’ preview distance=7/5=1.4
                 const tpl = makeTemplate("t1", "user-001", "circle", 7);
                 openConfigOnMoveTab([tpl]);
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 expect(global.CONFIG.MeasuredTemplate.documentClass).toHaveBeenCalledWith(
                     expect.objectContaining({ t: "circle", distance: 7 / 5 }), expect.anything()
                 );
             });
 
-            it("pending-move row gets stp-pending-move class on reopen", async () => {
+            it("pending-move row gets stb-pending-move class on reopen", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1431,7 +1431,7 @@ describe("Star Template Placer", () => {
                 container2.innerHTML = options2.content;
                 inst2.element = container2;
                 options2.render(new Event("render"), inst2);
-                expect($(container2).find("tr.stp-pending-move")).toHaveLength(1);
+                expect($(container2).find("tr.stb-pending-move")).toHaveLength(1);
             });
 
             it("moving a non-module cone stores angle and distance as module flags", async () => {
@@ -1443,16 +1443,16 @@ describe("Star Template Placer", () => {
                 });
                 openConfigOnMoveTab([tpl]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
-                localHtml.find(".stp-move-template-btn").eq(0).trigger("click");
+                localHtml.find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
-                // distance 100 → gridDist 5 → 20; angle preserved at 60
+                // distance 100 â†’ gridDist 5 â†’ 20; angle preserved at 60
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({
                         flags: expect.objectContaining({
-                            "star-template-placer": expect.objectContaining({ distance: 20, angle: 60, _nonModule: true }),
+                            "star-template-bar": expect.objectContaining({ distance: 20, angle: 60, _nonModule: true }),
                         }),
                     })]
                 );
@@ -1466,10 +1466,10 @@ describe("Star Template Placer", () => {
                 ]);
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 // Delete t1
-                localHtml.find('tr[data-id="t1"] .stp-remove-template-btn').trigger("click");
+                localHtml.find('tr[data-id="t1"] .stb-remove-template-btn').trigger("click");
                 await flushAsync();
                 // Move t2 (closes dialog, reopens after canvas click)
-                localHtml.find('tr[data-id="t2"] .stp-move-template-btn').trigger("click");
+                localHtml.find('tr[data-id="t2"] .stb-move-template-btn').trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
@@ -1494,15 +1494,15 @@ describe("Star Template Placer", () => {
                 openConfigOnMoveTab([tpl]);
                 // Move t1 to a new position (becomes created-1)
                 $(global.foundry.applications.api.DialogV2.__lastInstance.element)
-                    .find(".stp-move-template-btn").eq(0).trigger("click");
+                    .find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
                 // Reopened dialog; delete the moved template
                 const { html: html2 } = openDialogHtml();
-                html2.find(".stp-remove-template-btn").eq(0).trigger("click");
+                html2.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
-                // Cancel — should restore exactly one template, at the original position
+                // Cancel â€” should restore exactly one template, at the original position
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await flushAsync();
@@ -1518,15 +1518,15 @@ describe("Star Template Placer", () => {
                 const tpl = makeTemplate("t1", "user-001", "circle", 4);
                 openConfigOnMoveTab([tpl]);
                 $(global.foundry.applications.api.DialogV2.__lastInstance.element)
-                    .find(".stp-move-template-btn").eq(0).trigger("click");
+                    .find(".stb-move-template-btn").eq(0).trigger("click");
                 await flushAsync();
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.canvas.scene.createEmbeddedDocuments
                     .mockRejectedValueOnce(new Error("placement denied"))
                     .mockResolvedValue([]);
                 await simulateCanvasClick();
-                // One macrotask tick drains the whole microtask chain (delete → create-rejects →
-                // catch → create-to-restore); the mocks settle synchronously so no extra ticks are needed.
+                // One macrotask tick drains the whole microtask chain (delete â†’ create-rejects â†’
+                // catch â†’ create-to-restore); the mocks settle synchronously so no extra ticks are needed.
                 await flushAsync();
                 // First create (the moved copy) rejected; original is recreated at its start position
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
@@ -1542,7 +1542,7 @@ describe("Star Template Placer", () => {
     describe("custom template buttons", () => {
         it("renders no custom buttons when no custom templates are saved", () => {
             setupBar();
-            expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(0);
+            expect(document.querySelectorAll(".stb-custom-btn")).toHaveLength(0);
         });
 
         it("renders one custom button per saved custom template", () => {
@@ -1552,7 +1552,7 @@ describe("Star Template Placer", () => {
                     { name: "Fog",      t: "circle", distance: 20, angle: 57, fillColor: "#aaaaaa" },
                 ]
             });
-            expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(2);
+            expect(document.querySelectorAll(".stb-custom-btn")).toHaveLength(2);
         });
 
         it("custom button label matches the template name", () => {
@@ -1561,7 +1561,7 @@ describe("Star Template Placer", () => {
                     { name: "Call Lightning", t: "circle", distance: 60, angle: 57, fillColor: "#ffff00" }
                 ]
             });
-            const btn = document.querySelector(".stp-custom-btn");
+            const btn = document.querySelector(".stb-custom-btn");
             expect(btn.textContent.trim()).toBe("Call Lightning");
         });
 
@@ -1571,7 +1571,7 @@ describe("Star Template Placer", () => {
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff4400" }
                 ]
             });
-            document.querySelector(".stp-custom-btn").click();
+            document.querySelector(".stb-custom-btn").click();
             await flushAsync();
             expect(window.addEventListener).toHaveBeenCalledWith(
                 "pointerdown", expect.any(Function), { capture: true }
@@ -1584,7 +1584,7 @@ describe("Star Template Placer", () => {
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff4400" }
                 ]
             });
-            document.querySelector(".stp-custom-btn").click();
+            document.querySelector(".stb-custom-btn").click();
             await flushAsync();
             await simulateCanvasClick();
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
@@ -1599,9 +1599,9 @@ describe("Star Template Placer", () => {
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                 ]
             });
-            const grid = document.querySelector(".stp-custom-grid");
+            const grid = document.querySelector(".stb-custom-grid");
             expect(grid).not.toBeNull();
-            expect(grid.querySelector(".stp-custom-btn")).not.toBeNull();
+            expect(grid.querySelector(".stb-custom-btn")).not.toBeNull();
         });
 
         it("config button is not inside the custom grid", () => {
@@ -1610,8 +1610,8 @@ describe("Star Template Placer", () => {
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                 ]
             });
-            const grid = document.querySelector(".stp-custom-grid");
-            const configBtn = document.querySelector(".stp-config-btn");
+            const grid = document.querySelector(".stb-custom-grid");
+            const configBtn = document.querySelector(".stb-config-btn");
             expect(grid.contains(configBtn)).toBe(false);
         });
 
@@ -1622,8 +1622,8 @@ describe("Star Template Placer", () => {
                     { name: "B", t: "circle", distance: 20, angle: 57, fillColor: "#00ff00" },
                 ]
             });
-            const grid = document.querySelector(".stp-custom-grid");
-            expect(grid.querySelectorAll(".stp-custom-btn")).toHaveLength(2);
+            const grid = document.querySelector(".stb-custom-grid");
+            expect(grid.querySelectorAll(".stb-custom-btn")).toHaveLength(2);
         });
 
         describe("XSS in custom template names", () => {
@@ -1663,7 +1663,7 @@ describe("Star Template Placer", () => {
                         { name: "Evil", t: "circle", distance: 20, angle: 57, fillColor: "red;background:url(http://evil/?leak)" }
                     ]
                 });
-                const btn = document.querySelector(".stp-custom-btn");
+                const btn = document.querySelector(".stb-custom-btn");
                 expect(btn.style.cssText).not.toContain("evil");
                 expect(btn.style.cssText).not.toContain("url");
             });
@@ -1675,38 +1675,38 @@ describe("Star Template Placer", () => {
 
         it("opens when config button is clicked", () => {
             global.foundry.applications.api.DialogV2.wait.mockClear();
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
         it("does not open a second dialog when config button is clicked while already open", () => {
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             global.foundry.applications.api.DialogV2.wait.mockClear();
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
         });
 
         it("does not open a second dialog when move button is clicked while config is open", () => {
             global.canvas.scene.templates.contents = [makeTemplate("t1", "user-001", "circle", 4)];
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             global.foundry.applications.api.DialogV2.wait.mockClear();
-            document.querySelector(".stp-move-btn").click();
+            document.querySelector(".stb-move-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).not.toHaveBeenCalled();
         });
 
         it("allows reopening after the dialog is closed", async () => {
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             global.foundry.applications.api.DialogV2.__resolveDialog(null);
             await flushAsync();
             global.foundry.applications.api.DialogV2.wait.mockClear();
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             expect(global.foundry.applications.api.DialogV2.wait).toHaveBeenCalled();
         });
 
         it("dialog title includes module name and save hint", () => {
-            document.querySelector(".stp-config-btn").click();
+            document.querySelector(".stb-config-btn").click();
             const options = global.foundry.applications.api.DialogV2.__lastOptions;
-            expect(options.window.title).toContain("Star Template Placer");
+            expect(options.window.title).toContain("Star Template Bar");
             expect(options.window.title).toContain("save to persist changes");
         });
 
@@ -1714,7 +1714,7 @@ describe("Star Template Placer", () => {
             let html;
             beforeEach(() => {
                 setupBar();
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 ({ html } = openDialogHtml());
             });
 
@@ -1722,12 +1722,12 @@ describe("Star Template Placer", () => {
 
             function visiblePanels() {
                 return ALL_PANELS.filter(
-                    name => !html.find(`[data-panel="${name}"]`).hasClass("stp-tab-panel-hidden")
+                    name => !html.find(`[data-panel="${name}"]`).hasClass("stb-tab-panel-hidden")
                 );
             }
 
             it("templates tab is active on open", () => {
-                expect(html.find(".stp-tab.stp-tab-active").data("tab")).toBe("templates");
+                expect(html.find(".stb-tab.stb-tab-active").data("tab")).toBe("templates");
             });
 
             it("only the templates panel is visible on open", () => {
@@ -1768,12 +1768,12 @@ describe("Star Template Placer", () => {
             });
         });
 
-        describe("templates tab — empty state", () => {
+        describe("templates tab â€” empty state", () => {
             it("shows the no-custom-templates message when there are no custom templates", () => {
                 setupBar();
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
-                expect(html.find(".stp-no-custom-row")).toHaveLength(1);
+                expect(html.find(".stb-no-custom-row")).toHaveLength(1);
             });
 
             it("does not show the no-custom-templates message when custom templates exist", () => {
@@ -1782,223 +1782,223 @@ describe("Star Template Placer", () => {
                         { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                     ]
                 });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
-                expect(html.find(".stp-no-custom-row")).toHaveLength(0);
+                expect(html.find(".stb-no-custom-row")).toHaveLength(0);
             });
         });
 
-        describe("templates tab — add template", () => {
+        describe("templates tab â€” add template", () => {
             let html;
             beforeEach(() => {
                 global.ui.notifications.warn.mockClear();
                 setupBar();
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 ({ html } = openDialogHtml());
             });
 
             it("warns when name is empty", () => {
-                html.find(".stp-new-name").val("");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("");
+                html.find(".stb-add-btn").trigger("click");
                 expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                     expect.stringContaining("Template name is required")
                 );
             });
 
             it("warns when a template with that name already exists", () => {
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-add-btn").trigger("click");
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-add-btn").trigger("click");
                 expect(global.ui.notifications.warn).toHaveBeenCalledWith(
                     expect.stringContaining("already exists")
                 );
             });
 
             it("adds a row to the table when a valid template is added", () => {
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-add-btn").trigger("click");
                 expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
             it("replaces the no-custom-templates message when the first template is added", () => {
-                expect(html.find(".stp-no-custom-row")).toHaveLength(1);
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-add-btn").trigger("click");
-                expect(html.find(".stp-no-custom-row")).toHaveLength(0);
+                expect(html.find(".stb-no-custom-row")).toHaveLength(1);
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-add-btn").trigger("click");
+                expect(html.find(".stb-no-custom-row")).toHaveLength(0);
             });
 
             it("clears the name input after adding", () => {
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-add-btn").trigger("click");
-                expect(html.find(".stp-new-name").val()).toBe("");
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-add-btn").trigger("click");
+                expect(html.find(".stb-new-name").val()).toBe("");
             });
 
             it("shows cone angle row when type is cone", () => {
-                html.find(".stp-new-type").val("cone").trigger("change");
-                expect(html.find(".stp-new-cone-row").css("display")).not.toBe("none");
+                html.find(".stb-new-type").val("cone").trigger("change");
+                expect(html.find(".stb-new-cone-row").css("display")).not.toBe("none");
             });
 
             it("hides cone angle row when type is not cone", () => {
-                html.find(".stp-new-type").val("cone").trigger("change");
-                html.find(".stp-new-type").val("circle").trigger("change");
-                expect(html.find(".stp-new-cone-row").css("display")).toBe("none");
+                html.find(".stb-new-type").val("cone").trigger("change");
+                html.find(".stb-new-type").val("circle").trigger("change");
+                expect(html.find(".stb-new-cone-row").css("display")).toBe("none");
             });
 
             it("width row is hidden by default", () => {
-                expect(html.find(".stp-new-width-row").css("display")).toBe("none");
+                expect(html.find(".stb-new-width-row").css("display")).toBe("none");
             });
 
             it("shows width row when type is ray", () => {
-                html.find(".stp-new-type").val("ray").trigger("change");
-                expect(html.find(".stp-new-width-row").css("display")).not.toBe("none");
+                html.find(".stb-new-type").val("ray").trigger("change");
+                expect(html.find(".stb-new-width-row").css("display")).not.toBe("none");
             });
 
             it("shows width row when type is rect", () => {
-                html.find(".stp-new-type").val("rect").trigger("change");
-                expect(html.find(".stp-new-width-row").css("display")).not.toBe("none");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                expect(html.find(".stb-new-width-row").css("display")).not.toBe("none");
             });
 
             it("height row is hidden by default", () => {
-                expect(html.find(".stp-new-height-row").css("display")).toBe("none");
+                expect(html.find(".stb-new-height-row").css("display")).toBe("none");
             });
 
             it("shows height row when type is rect", () => {
-                html.find(".stp-new-type").val("rect").trigger("change");
-                expect(html.find(".stp-new-height-row").css("display")).not.toBe("none");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                expect(html.find(".stb-new-height-row").css("display")).not.toBe("none");
             });
 
             it("hides height row when type is changed away from rect", () => {
-                html.find(".stp-new-type").val("rect").trigger("change");
-                html.find(".stp-new-type").val("circle").trigger("change");
-                expect(html.find(".stp-new-height-row").css("display")).toBe("none");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                html.find(".stb-new-type").val("circle").trigger("change");
+                expect(html.find(".stb-new-height-row").css("display")).toBe("none");
             });
 
             it("size row is hidden when type is rect", () => {
-                html.find(".stp-new-type").val("rect").trigger("change");
-                expect(html.find(".stp-new-distance-row").css("display")).toBe("none");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                expect(html.find(".stb-new-distance-row").css("display")).toBe("none");
             });
 
             it("size row is visible when type is changed away from rect", () => {
-                html.find(".stp-new-type").val("rect").trigger("change");
-                html.find(".stp-new-type").val("circle").trigger("change");
-                expect(html.find(".stp-new-distance-row").css("display")).not.toBe("none");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                html.find(".stb-new-type").val("circle").trigger("change");
+                expect(html.find(".stb-new-distance-row").css("display")).not.toBe("none");
             });
 
             it("hides width row when type is changed away from ray", () => {
-                html.find(".stp-new-type").val("ray").trigger("change");
-                html.find(".stp-new-type").val("circle").trigger("change");
-                expect(html.find(".stp-new-width-row").css("display")).toBe("none");
+                html.find(".stb-new-type").val("ray").trigger("change");
+                html.find(".stb-new-type").val("circle").trigger("change");
+                expect(html.find(".stb-new-width-row").css("display")).toBe("none");
             });
 
             it("hides width row when type is changed away from rect", () => {
-                html.find(".stp-new-type").val("rect").trigger("change");
-                html.find(".stp-new-type").val("circle").trigger("change");
-                expect(html.find(".stp-new-width-row").css("display")).toBe("none");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                html.find(".stb-new-type").val("circle").trigger("change");
+                expect(html.find(".stb-new-width-row").css("display")).toBe("none");
             });
 
             it("stores width in custom template for ray", () => {
-                html.find(".stp-new-name").val("Wall");
-                html.find(".stp-new-type").val("ray").trigger("change");
-                html.find(".stp-new-width").val("15");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Wall");
+                html.find(".stb-new-type").val("ray").trigger("change");
+                html.find(".stb-new-width").val("15");
+                html.find(".stb-add-btn").trigger("click");
                 expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
             it("stores width and height in custom template for rect and shows them in table", () => {
-                html.find(".stp-new-name").val("Wall");
-                html.find(".stp-new-type").val("rect").trigger("change");
-                html.find(".stp-new-width").val("15");
-                html.find(".stp-new-height").val("20");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Wall");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                html.find(".stb-new-width").val("15");
+                html.find(".stb-new-height").val("20");
+                html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(3).text()).toBe("15ft × 20ft");
+                expect(cells.eq(3).text()).toBe("15ft Ã— 20ft");
             });
 
             it("shows width in feet for ray type", () => {
-                html.find(".stp-new-name").val("Blast");
-                html.find(".stp-new-type").val("ray").trigger("change");
-                html.find(".stp-new-width").val("10");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Blast");
+                html.find(".stb-new-type").val("ray").trigger("change");
+                html.find(".stb-new-width").val("10");
+                html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
                 expect(cells.eq(3).text()).toBe("10ft");
             });
 
             it("shows dash for width when type is not ray or rect", () => {
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-new-type").val("circle");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-new-type").val("circle");
+                html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(3).text()).toBe("—");
+                expect(cells.eq(3).text()).toBe("â€”");
             });
 
-            it("shows width × height for rect type", () => {
-                html.find(".stp-new-name").val("Wall");
-                html.find(".stp-new-type").val("rect").trigger("change");
-                html.find(".stp-new-width").val("10");
-                html.find(".stp-new-height").val("30");
-                html.find(".stp-add-btn").trigger("click");
+            it("shows width Ã— height for rect type", () => {
+                html.find(".stb-new-name").val("Wall");
+                html.find(".stb-new-type").val("rect").trigger("change");
+                html.find(".stb-new-width").val("10");
+                html.find(".stb-new-height").val("30");
+                html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(3).text()).toBe("10ft × 30ft");
+                expect(cells.eq(3).text()).toBe("10ft Ã— 30ft");
             });
 
             it("shows angle in degrees for cone type", () => {
-                html.find(".stp-new-name").val("Breathe");
-                html.find(".stp-new-type").val("cone").trigger("change");
-                html.find(".stp-new-angle").val("90");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Breathe");
+                html.find(".stb-new-type").val("cone").trigger("change");
+                html.find(".stb-new-angle").val("90");
+                html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(4).text()).toBe("90°");
+                expect(cells.eq(4).text()).toBe("90Â°");
             });
 
             it("shows dash for angle when type is not cone", () => {
-                html.find(".stp-new-name").val("Fireball");
-                html.find(".stp-new-type").val("circle");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Fireball");
+                html.find(".stb-new-type").val("circle");
+                html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(4).text()).toBe("—");
+                expect(cells.eq(4).text()).toBe("â€”");
             });
 
             it("Enter in name field triggers add", () => {
-                html.find(".stp-new-name").val("Quick");
-                html.find(".stp-new-name").trigger({ type: "keydown", key: "Enter" });
+                html.find(".stb-new-name").val("Quick");
+                html.find(".stb-new-name").trigger({ type: "keydown", key: "Enter" });
                 expect(html.find("tbody tr[data-index]")).toHaveLength(1);
             });
 
             it("does not warn when name is valid and unique", () => {
-                html.find(".stp-new-name").val("Thunderwave");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Thunderwave");
+                html.find(".stb-add-btn").trigger("click");
                 expect(global.ui.notifications.warn).not.toHaveBeenCalled();
             });
 
             describe("XSS in add form", () => {
                 it("does not execute a script tag injected as a name", () => {
                     window.__xssAddScript = undefined;
-                    html.find(".stp-new-name").val("<script>window.__xssAddScript=true</script>");
-                    html.find(".stp-add-btn").trigger("click");
+                    html.find(".stb-new-name").val("<script>window.__xssAddScript=true</script>");
+                    html.find(".stb-add-btn").trigger("click");
                     expect(window.__xssAddScript).toBeUndefined();
                 });
 
                 it("does not execute an event handler injected as a name", () => {
                     window.__xssAddAttr = undefined;
-                    html.find(".stp-new-name").val('x" onmouseover="window.__xssAddAttr=true');
-                    html.find(".stp-add-btn").trigger("click");
+                    html.find(".stb-new-name").val('x" onmouseover="window.__xssAddAttr=true');
+                    html.find(".stb-add-btn").trigger("click");
                     expect(window.__xssAddAttr).toBeUndefined();
                 });
             });
         });
 
-        describe("templates tab — delete template", () => {
+        describe("templates tab â€” delete template", () => {
             it("removes the row from the table when delete is clicked", () => {
                 setupBar({
                     customTemplates: [
                         { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                     ]
                 });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 expect(html.find("tbody tr[data-index]")).toHaveLength(1);
-                html.find(".stp-delete-btn").trigger("click");
+                html.find(".stb-delete-btn").trigger("click");
                 expect(html.find("tbody tr[data-index]")).toHaveLength(0);
             });
 
@@ -2008,10 +2008,10 @@ describe("Star Template Placer", () => {
                         { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                     ]
                 });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
-                html.find(".stp-delete-btn").trigger("click");
-                expect(html.find(".stp-no-custom-row")).toHaveLength(1);
+                html.find(".stb-delete-btn").trigger("click");
+                expect(html.find(".stb-no-custom-row")).toHaveLength(1);
             });
 
             it("re-indexes remaining rows correctly after delete", () => {
@@ -2022,9 +2022,9 @@ describe("Star Template Placer", () => {
                         { name: "C", t: "circle", distance: 40, angle: 57, fillColor: "#0000ff" },
                     ]
                 });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
-                html.find("tbody tr").eq(0).find(".stp-delete-btn").trigger("click");
+                html.find("tbody tr").eq(0).find(".stb-delete-btn").trigger("click");
                 const rows = html.find("tbody tr");
                 expect(rows).toHaveLength(2);
                 expect(rows.eq(0).data("index")).toBe(0);
@@ -2037,15 +2037,15 @@ describe("Star Template Placer", () => {
                         { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                     ]
                 });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html, options } = openDialogHtml();
-                html.find(".stp-delete-btn").trigger("click");
+                html.find(".stb-delete-btn").trigger("click");
                 global.game.user.setFlag.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
                 expect(global.game.user.setFlag).toHaveBeenCalledWith(
-                    "star-template-placer", "customTemplates", []
+                    "star-template-bar", "customTemplates", []
                 );
             });
         });
@@ -2053,7 +2053,7 @@ describe("Star Template Placer", () => {
         describe("layout tab", () => {
             function openLayout(flagOverrides = {}) {
                 setupBar(flagOverrides);
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='layout']").trigger("click");
                 return html;
@@ -2061,7 +2061,7 @@ describe("Star Template Placer", () => {
 
             it("shows empty state when there are no custom templates", () => {
                 const html = openLayout();
-                expect(html.find(".stp-layout-empty")).toHaveLength(1);
+                expect(html.find(".stb-layout-empty")).toHaveLength(1);
             });
 
             it("shows tiles for each custom template", () => {
@@ -2071,9 +2071,9 @@ describe("Star Template Placer", () => {
                         { name: "Fog",      t: "circle", distance: 30, angle: 57, fillColor: "#aaaaaa" },
                     ]
                 });
-                expect(html.find(".stp-layout-tile")).toHaveLength(2);
-                expect(html.find(".stp-layout-tile").eq(0).text()).toBe("Fireball");
-                expect(html.find(".stp-layout-tile").eq(1).text()).toBe("Fog");
+                expect(html.find(".stb-layout-tile")).toHaveLength(2);
+                expect(html.find(".stb-layout-tile").eq(0).text()).toBe("Fireball");
+                expect(html.find(".stb-layout-tile").eq(1).text()).toBe("Fog");
             });
 
             it("shows a row count input defaulting to 1", () => {
@@ -2082,7 +2082,7 @@ describe("Star Template Placer", () => {
                         { name: "A", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
                     ]
                 });
-                expect(html.find(".stp-rows-input").val()).toBe("1");
+                expect(html.find(".stb-rows-input").val()).toBe("1");
             });
 
             it("changing row count reshapes the layout", () => {
@@ -2094,8 +2094,8 @@ describe("Star Template Placer", () => {
                         { name: "D", t: "circle", distance: 20, angle: 57, fillColor: "#ffff00" },
                     ]
                 });
-                html.find(".stp-rows-input").val("2").trigger("change");
-                expect(html.find(".stp-layout-row")).toHaveLength(2);
+                html.find(".stb-rows-input").val("2").trigger("change");
+                expect(html.find(".stb-layout-row")).toHaveLength(2);
             });
 
             it("saves barGrid on Save", async () => {
@@ -2104,24 +2104,24 @@ describe("Star Template Placer", () => {
                         { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
                     ]
                 });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { options } = openDialogHtml();
                 global.game.user.setFlag.mockClear();
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
                 expect(global.game.user.setFlag).toHaveBeenCalledWith(
-                    "star-template-placer", "barGrid", expect.any(Array)
+                    "star-template-bar", "barGrid", expect.any(Array)
                 );
             });
 
             it("adding a template also adds it to the layout", () => {
                 const html = openLayout();
                 html.find("[data-tab='templates']").trigger("click");
-                html.find(".stp-new-name").val("Nova");
-                html.find(".stp-add-btn").trigger("click");
+                html.find(".stb-new-name").val("Nova");
+                html.find(".stb-add-btn").trigger("click");
                 html.find("[data-tab='layout']").trigger("click");
-                expect(html.find(".stp-layout-tile").text()).toContain("Nova");
+                expect(html.find(".stb-layout-tile").text()).toContain("Nova");
             });
 
             it("deleting a template removes it from the layout", () => {
@@ -2130,18 +2130,18 @@ describe("Star Template Placer", () => {
                         { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
                     ]
                 });
-                expect(html.find(".stp-layout-tile")).toHaveLength(1);
+                expect(html.find(".stb-layout-tile")).toHaveLength(1);
                 html.find("[data-tab='templates']").trigger("click");
-                html.find(".stp-delete-btn").trigger("click");
+                html.find(".stb-delete-btn").trigger("click");
                 html.find("[data-tab='layout']").trigger("click");
-                expect(html.find(".stp-layout-empty")).toHaveLength(1);
+                expect(html.find(".stb-layout-empty")).toHaveLength(1);
             });
         });
 
         describe("extra tab", () => {
             function openExtra(flagOverrides = {}) {
                 setupBar(flagOverrides);
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html } = openDialogHtml();
                 html.find("[data-tab='extra']").trigger("click");
                 return html;
@@ -2149,57 +2149,57 @@ describe("Star Template Placer", () => {
 
             it("checkbox is unchecked when barHidden is not set", () => {
                 const html = openExtra();
-                expect(html.find(".stp-hide-bar-checkbox").prop("checked")).toBe(false);
+                expect(html.find(".stb-hide-bar-checkbox").prop("checked")).toBe(false);
             });
 
             it("checkbox is checked when barHidden is true", () => {
                 const html = openExtra({ barHidden: true });
-                expect(html.find(".stp-hide-bar-checkbox").prop("checked")).toBe(true);
+                expect(html.find(".stb-hide-bar-checkbox").prop("checked")).toBe(true);
             });
 
             it("checking the checkbox hides the bar immediately for preview", () => {
                 const html = openExtra();
-                html.find(".stp-hide-bar-checkbox").prop("checked", true).trigger("change");
-                expect(document.querySelector(".stp-template-bar").style.display).toBe("none");
+                html.find(".stb-hide-bar-checkbox").prop("checked", true).trigger("change");
+                expect(document.querySelector(".stb-template-bar").style.display).toBe("none");
             });
 
             it("unchecking the checkbox shows the bar immediately", () => {
                 const html = openExtra({ barHidden: true });
-                html.find(".stp-hide-bar-checkbox").prop("checked", false).trigger("change");
-                expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
+                html.find(".stb-hide-bar-checkbox").prop("checked", false).trigger("change");
+                expect(document.querySelector(".stb-template-bar").style.display).not.toBe("none");
             });
 
             it("Cancel restores the bar when checkbox was previewed as checked", async () => {
                 const html = openExtra();
-                html.find(".stp-hide-bar-checkbox").prop("checked", true).trigger("change");
+                html.find(".stb-hide-bar-checkbox").prop("checked", true).trigger("change");
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await flushAsync();
-                expect(document.querySelector(".stp-template-bar").style.display).not.toBe("none");
+                expect(document.querySelector(".stb-template-bar").style.display).not.toBe("none");
             });
 
             it("Save saves barHidden as true when checkbox is checked", async () => {
                 const html = openExtra();
-                html.find(".stp-hide-bar-checkbox").prop("checked", true);
+                html.find(".stb-hide-bar-checkbox").prop("checked", true);
                 global.game.settings.set.mockClear();
                 const options = global.foundry.applications.api.DialogV2.__lastOptions;
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
                 expect(global.game.settings.set).toHaveBeenCalledWith(
-                    "star-template-placer", "barHidden", true
+                    "star-template-bar", "barHidden", true
                 );
             });
 
             it("Save saves barHidden as false when checkbox is unchecked", async () => {
                 const html = openExtra({ barHidden: true });
-                html.find(".stp-hide-bar-checkbox").prop("checked", false);
+                html.find(".stb-hide-bar-checkbox").prop("checked", false);
                 global.game.settings.set.mockClear();
                 const options = global.foundry.applications.api.DialogV2.__lastOptions;
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
                 expect(global.game.settings.set).toHaveBeenCalledWith(
-                    "star-template-placer", "barHidden", false
+                    "star-template-bar", "barHidden", false
                 );
             });
         });
@@ -2210,38 +2210,38 @@ describe("Star Template Placer", () => {
                 global.game.user.setFlag.mockClear();
                 global.game.user.unsetFlag.mockClear();
                 setupBar();
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 ({ html } = openDialogHtml());
                 html.find("[data-tab='reset']").trigger("click");
             });
 
             it("reset position button does not immediately save the barPosition flag", () => {
-                html.find(".stp-reset-position-btn").trigger("click");
+                html.find(".stb-reset-position-btn").trigger("click");
                 expect(global.game.user.setFlag).not.toHaveBeenCalledWith(
-                    "star-template-placer", "barPosition", expect.anything()
+                    "star-template-bar", "barPosition", expect.anything()
                 );
             });
 
             it("reset position applies default position immediately for preview", () => {
                 setupBar({ barPosition: { left: 200, top: 150 } });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 const { html: localHtml } = openDialogHtml();
                 localHtml.find("[data-tab='reset']").trigger("click");
-                localHtml.find(".stp-reset-position-btn").trigger("click");
-                const bar = document.querySelector(".stp-template-bar");
+                localHtml.find(".stb-reset-position-btn").trigger("click");
+                const bar = document.querySelector(".stb-template-bar");
                 expect(bar.style.left).not.toBe("200px");
                 expect(bar.style.top).not.toBe("150px");
             });
 
             it("reset position unsets the barPosition flag when Save is clicked", async () => {
-                html.find(".stp-reset-position-btn").trigger("click");
+                html.find(".stb-reset-position-btn").trigger("click");
                 global.game.user.unsetFlag.mockClear();
                 const options = global.foundry.applications.api.DialogV2.__lastOptions;
                 const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
                 expect(global.game.user.unsetFlag).toHaveBeenCalledWith(
-                    "star-template-placer", "barPosition"
+                    "star-template-bar", "barPosition"
                 );
             });
 
@@ -2252,26 +2252,26 @@ describe("Star Template Placer", () => {
                 const saveBtn = options.buttons.find(b => b.action === "save");
                 await saveBtn.callback(null, null, { element: container });
                 expect(global.game.user.unsetFlag).not.toHaveBeenCalledWith(
-                    "star-template-placer", "barPosition"
+                    "star-template-bar", "barPosition"
                 );
             });
 
             it("Cancel restores original bar position when reset was previewed", async () => {
                 setupBar({ barPosition: { left: 200, top: 150 } });
-                document.querySelector(".stp-config-btn").click();
+                document.querySelector(".stb-config-btn").click();
                 openDialogHtml();
                 const localHtml = $(global.foundry.applications.api.DialogV2.__lastInstance.element);
                 localHtml.find("[data-tab='reset']").trigger("click");
-                localHtml.find(".stp-reset-position-btn").trigger("click");
+                localHtml.find(".stb-reset-position-btn").trigger("click");
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await flushAsync();
-                expect(document.querySelector(".stp-template-bar").style.left).toBe("200px");
-                expect(document.querySelector(".stp-template-bar").style.top).toBe("150px");
+                expect(document.querySelector(".stb-template-bar").style.left).toBe("200px");
+                expect(document.querySelector(".stb-template-bar").style.top).toBe("150px");
             });
 
             describe("Clear All Templates button", () => {
                 it("is present in the reset panel", () => {
-                    expect(html.find(".stp-clear-templates-btn")).toHaveLength(1);
+                    expect(html.find(".stb-clear-templates-btn")).toHaveLength(1);
                 });
 
                 it("removes all template rows and shows empty state in templates tab", () => {
@@ -2281,13 +2281,13 @@ describe("Star Template Placer", () => {
                             { name: "Fog",      t: "circle", distance: 30, angle: 57, fillColor: "#aaaaaa" },
                         ]
                     });
-                    document.querySelector(".stp-config-btn").click();
+                    document.querySelector(".stb-config-btn").click();
                     const { html: localHtml } = openDialogHtml();
                     localHtml.find("[data-tab='reset']").trigger("click");
-                    localHtml.find(".stp-clear-templates-btn").trigger("click");
+                    localHtml.find(".stb-clear-templates-btn").trigger("click");
                     localHtml.find("[data-tab='templates']").trigger("click");
                     expect(localHtml.find('[data-panel="templates"] tbody tr[data-index]')).toHaveLength(0);
-                    expect(localHtml.find(".stp-no-custom-row")).toHaveLength(1);
+                    expect(localHtml.find(".stb-no-custom-row")).toHaveLength(1);
                 });
 
                 it("removes all custom buttons from the bar immediately", () => {
@@ -2296,11 +2296,11 @@ describe("Star Template Placer", () => {
                             { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
                         ]
                     });
-                    document.querySelector(".stp-config-btn").click();
+                    document.querySelector(".stb-config-btn").click();
                     const { html: localHtml } = openDialogHtml();
                     localHtml.find("[data-tab='reset']").trigger("click");
-                    localHtml.find(".stp-clear-templates-btn").trigger("click");
-                    expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(0);
+                    localHtml.find(".stb-clear-templates-btn").trigger("click");
+                    expect(document.querySelectorAll(".stb-custom-btn")).toHaveLength(0);
                 });
 
                 it("saves empty customTemplates and barGrid arrays on Save", async () => {
@@ -2309,19 +2309,19 @@ describe("Star Template Placer", () => {
                             { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
                         ]
                     });
-                    document.querySelector(".stp-config-btn").click();
+                    document.querySelector(".stb-config-btn").click();
                     const { html: localHtml, options } = openDialogHtml();
                     localHtml.find("[data-tab='reset']").trigger("click");
-                    localHtml.find(".stp-clear-templates-btn").trigger("click");
+                    localHtml.find(".stb-clear-templates-btn").trigger("click");
                     global.game.user.setFlag.mockClear();
                     const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
                     const saveBtn = options.buttons.find(b => b.action === "save");
                     await saveBtn.callback(null, null, { element: container });
                     expect(global.game.user.setFlag).toHaveBeenCalledWith(
-                        "star-template-placer", "customTemplates", []
+                        "star-template-bar", "customTemplates", []
                     );
                     expect(global.game.user.setFlag).toHaveBeenCalledWith(
-                        "star-template-placer", "barGrid", expect.any(Array)
+                        "star-template-bar", "barGrid", expect.any(Array)
                     );
                 });
 
@@ -2331,14 +2331,14 @@ describe("Star Template Placer", () => {
                             { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
                         ]
                     });
-                    document.querySelector(".stp-config-btn").click();
+                    document.querySelector(".stb-config-btn").click();
                     const { html: localHtml } = openDialogHtml();
                     localHtml.find("[data-tab='reset']").trigger("click");
-                    localHtml.find(".stp-clear-templates-btn").trigger("click");
-                    expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(0);
+                    localHtml.find(".stb-clear-templates-btn").trigger("click");
+                    expect(document.querySelectorAll(".stb-custom-btn")).toHaveLength(0);
                     global.foundry.applications.api.DialogV2.__resolveDialog(null);
                     await flushAsync();
-                    expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(1);
+                    expect(document.querySelectorAll(".stb-custom-btn")).toHaveLength(1);
                 });
             });
         });
@@ -2358,7 +2358,7 @@ describe("Star Template Placer", () => {
                     { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" }
                 ]
             });
-            const btn = document.querySelector(".stp-custom-btn");
+            const btn = document.querySelector(".stb-custom-btn");
 
             btn.click();
             await flushAsync();

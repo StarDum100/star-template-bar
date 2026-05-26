@@ -1,6 +1,6 @@
-/* ── Bar ─────────────────────────────────────────────────────────────────── */
+/* â”€â”€ Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-template-bar {
+.stb-template-bar {
     position: fixed;
     z-index: 70;
     display: flex;
@@ -13,7 +13,7 @@
     pointer-events: all;
 }
 
-.stp-template-bar button {
+.stb-template-bar button {
     color: white;
     background: #2c2c2c;
     border: 1px solid #555;
@@ -23,11 +23,11 @@
     white-space: nowrap;
 }
 
-.stp-template-bar button:hover {
+.stb-template-bar button:hover {
     background: #444;
 }
 
-.stp-bar-handle {
+.stb-bar-handle {
     color: #777;
     cursor: grab;
     font-size: 18px;
@@ -37,31 +37,31 @@
     margin-top: 3px;
 }
 
-.stp-bar-handle:hover  { color: #aaa; }
-.stp-bar-handle:active { cursor: grabbing; }
+.stb-bar-handle:hover  { color: #aaa; }
+.stb-bar-handle:active { cursor: grabbing; }
 
-.stp-config-btn {
+.stb-config-btn {
     opacity: 0.6;
     font-size: 14px;
 }
 
-.stp-config-btn:hover { opacity: 1; }
+.stb-config-btn:hover { opacity: 1; }
 
-.stp-custom-btn {
+.stb-custom-btn {
     border-left-width: 3px !important;
 }
 
 /* Single-row: controls wrapper is transparent so its children participate
    directly in the bar's flex layout, ordered handle | place | move | customs | config */
-.stp-bar-controls { display: contents; }
-.stp-bar-handle   { order: 1; }
-.stp-place-btn    { order: 2; }
-.stp-move-btn     { order: 3; }
-.stp-custom-grid  { order: 4; }
-.stp-config-btn   { order: 5; }
+.stb-bar-controls { display: contents; }
+.stb-bar-handle   { order: 1; }
+.stb-place-btn    { order: 2; }
+.stb-move-btn     { order: 3; }
+.stb-custom-grid  { order: 4; }
+.stb-config-btn   { order: 5; }
 
 /* Multi-row: controls become a stacked column pinned to the top-left */
-.stp-template-bar.stp-bar-multirow .stp-bar-controls {
+.stb-template-bar.stb-bar-multirow .stb-bar-controls {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -69,13 +69,13 @@
     order: 0;
 }
 
-.stp-custom-grid {
+.stb-custom-grid {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.stp-bar-row {
+.stb-bar-row {
     display: flex;
     flex-direction: row;
     gap: 4px;
@@ -83,22 +83,22 @@
 }
 
 /* Multi-row: buttons fill available width in equal columns */
-.stp-template-bar.stp-bar-multirow .stp-bar-row {
+.stb-template-bar.stb-bar-multirow .stb-bar-row {
     display: grid;
-    grid-template-columns: repeat(var(--stp-cols), minmax(0, 1fr));
+    grid-template-columns: repeat(var(--stb-cols), minmax(0, 1fr));
     gap: 4px;
 }
 
-/* ── Config dialog tabs ──────────────────────────────────────────────────── */
+/* â”€â”€ Config dialog tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-tabs {
+.stb-tabs {
     display: flex;
     gap: 2px;
     border-bottom: 1px solid #555;
     margin-bottom: 10px;
 }
 
-.stp-tab {
+.stb-tab {
     background: #1a1a1a;
     border: 1px solid #555;
     border-bottom: none;
@@ -109,37 +109,37 @@
     margin-bottom: -1px;
 }
 
-.stp-tab.stp-tab-active {
+.stb-tab.stb-tab-active {
     background: #2c2c2c;
     color: white;
     border-bottom: 1px solid #2c2c2c;
 }
 
-.stp-tab-panel-hidden { display: none; }
+.stb-tab-panel-hidden { display: none; }
 
-/* ── Templates tab ───────────────────────────────────────────────────────── */
+/* â”€â”€ Templates tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-config-table {
+.stb-config-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 4px;
 }
 
-.stp-config-table th,
-.stp-config-table td {
+.stb-config-table th,
+.stb-config-table td {
     padding: 6px 10px;
     border-bottom: 1px solid #444;
     text-align: left;
 }
 
-.stp-delete-cell,
-.stp-action-cell {
+.stb-delete-cell,
+.stb-action-cell {
     text-align: center;
     width: 56px;
     white-space: nowrap;
 }
 
-.stp-delete-btn {
+.stb-delete-btn {
     background: none;
     border: none;
     color: #c44;
@@ -149,9 +149,9 @@
     line-height: 1;
 }
 
-.stp-delete-btn:hover { color: #f66; }
+.stb-delete-btn:hover { color: #f66; }
 
-.stp-color-swatch {
+.stb-color-swatch {
     display: inline-block;
     width: 18px;
     height: 18px;
@@ -160,44 +160,44 @@
     vertical-align: middle;
 }
 
-.stp-no-custom-row td {
+.stb-no-custom-row td {
     color: #888;
     font-style: italic;
     text-align: center;
     padding: 10px;
 }
 
-/* ── Add section ─────────────────────────────────────────────────────────── */
+/* â”€â”€ Add section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-add-section {
+.stb-add-section {
     margin-top: 12px;
     border-top: 1px solid #444;
     padding-top: 10px;
 }
 
-.stp-add-form {
+.stb-add-form {
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: 6px 0 4px;
 }
 
-.stp-form-row {
+.stb-form-row {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.stp-form-row label {
+.stb-form-row label {
     width: 70px;
     flex-shrink: 0;
     color: #ccc;
     font-size: 13px;
 }
 
-.stp-form-row input[type="text"],
-.stp-form-row input[type="number"],
-.stp-form-row select {
+.stb-form-row input[type="text"],
+.stb-form-row input[type="number"],
+.stb-form-row select {
     flex: 1;
     background: #1a1a1a;
     border: 1px solid #555;
@@ -208,7 +208,7 @@
     box-sizing: border-box;
 }
 
-.stp-form-row input[type="color"] {
+.stb-form-row input[type="color"] {
     flex: 1;
     height: 28px;
     border: 1px solid #555;
@@ -219,7 +219,7 @@
     box-sizing: border-box;
 }
 
-.stp-add-btn {
+.stb-add-btn {
     background: #2c2c2c;
     border: 1px solid #555;
     border-radius: 4px;
@@ -231,33 +231,33 @@
     align-self: flex-end;
 }
 
-.stp-add-btn:hover { background: #444; }
+.stb-add-btn:hover { background: #444; }
 
-/* ── Place template dialog ───────────────────────────────────────────────── */
+/* â”€â”€ Place template dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-place-form {
+.stb-place-form {
     display: flex;
     flex-direction: column;
     gap: 8px;
     padding: 4px 0;
 }
 
-/* ── Layout tab ──────────────────────────────────────────────────────────── */
+/* â”€â”€ Layout tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-layout-editor {
+.stb-layout-editor {
     display: flex;
     flex-direction: column;
     gap: 6px;
     padding: 10px 0;
 }
 
-.stp-layout-row {
+.stb-layout-row {
     display: flex;
     gap: 6px;
     flex-wrap: nowrap;
 }
 
-.stp-layout-tile {
+.stb-layout-tile {
     background: #2c2c2c;
     border: 2px solid #555;
     border-radius: 4px;
@@ -269,10 +269,10 @@
     user-select: none;
 }
 
-.stp-layout-tile:active  { cursor: grabbing; }
-.stp-layout-tile.stp-dragging { opacity: 0.4; }
+.stb-layout-tile:active  { cursor: grabbing; }
+.stb-layout-tile.stb-dragging { opacity: 0.4; }
 
-.stp-layout-slot {
+.stb-layout-slot {
     background: transparent;
     border: 2px dashed #444;
     border-radius: 4px;
@@ -281,25 +281,25 @@
     opacity: 0.45;
 }
 
-.stp-layout-tile.stp-slot-over,
-.stp-layout-slot.stp-slot-over {
+.stb-layout-tile.stb-slot-over,
+.stb-layout-slot.stb-slot-over {
     border-color: #8af;
     background: rgba(136, 170, 255, 0.15);
 }
 
-.stp-layout-controls {
+.stb-layout-controls {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 10px;
 }
 
-.stp-rows-label {
+.stb-rows-label {
     color: #ccc;
     font-size: 13px;
 }
 
-.stp-rows-input {
+.stb-rows-input {
     background: #1a1a1a;
     border: 1px solid #555;
     border-radius: 4px;
@@ -309,7 +309,7 @@
     width: 52px;
 }
 
-.stp-layout-hint {
+.stb-layout-hint {
     color: #888;
     font-size: 11px;
     font-style: italic;
@@ -317,16 +317,16 @@
     text-align: center;
 }
 
-.stp-layout-empty {
+.stb-layout-empty {
     color: #888;
     font-style: italic;
     padding: 16px 0;
     text-align: center;
 }
 
-/* ── Move tab ────────────────────────────────────────────────────────────── */
+/* â”€â”€ Move tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-move-template-btn {
+.stb-move-template-btn {
     background: none;
     border: none;
     color: #88aaff;
@@ -336,9 +336,9 @@
     line-height: 1;
 }
 
-.stp-move-template-btn:hover { color: #aaccff; }
+.stb-move-template-btn:hover { color: #aaccff; }
 
-.stp-remove-template-btn {
+.stb-remove-template-btn {
     background: none;
     border: none;
     color: #c44;
@@ -348,69 +348,69 @@
     line-height: 1;
 }
 
-.stp-remove-template-btn:hover { color: #f66; }
+.stb-remove-template-btn:hover { color: #f66; }
 
-.stp-pending-move {
+.stb-pending-move {
     opacity: 0.65;
 }
 
-.stp-move-empty {
+.stb-move-empty {
     color: #888;
     font-style: italic;
     padding: 16px 0;
     text-align: center;
 }
 
-/* ── Extra tab ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Extra tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-extra-panel {
+.stb-extra-panel {
     display: flex;
     flex-direction: column;
     gap: 14px;
     padding: 6px 0 10px;
 }
 
-.stp-extra-item {
+.stb-extra-item {
     display: flex;
     align-items: flex-start;
     gap: 10px;
     cursor: pointer;
 }
 
-.stp-extra-item input[type="checkbox"] {
+.stb-extra-item input[type="checkbox"] {
     margin-top: 3px;
     flex-shrink: 0;
 }
 
-.stp-extra-item p {
+.stb-extra-item p {
     color: #888;
     font-size: 12px;
     margin: 3px 0 0;
 }
 
-/* ── Reset tab ───────────────────────────────────────────────────────────── */
+/* â”€â”€ Reset tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-.stp-reset-panel {
+.stb-reset-panel {
     display: flex;
     flex-direction: column;
     gap: 14px;
     padding: 6px 0 10px;
 }
 
-.stp-reset-item {
+.stb-reset-item {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.stp-reset-item p {
+.stb-reset-item p {
     color: #888;
     font-size: 12px;
     margin: 3px 0 0;
 }
 
-.stp-reset-position-btn,
-.stp-clear-templates-btn {
+.stb-reset-position-btn,
+.stb-clear-templates-btn {
     white-space: nowrap;
     background: #2c2c2c;
     border: 1px solid #555;
@@ -421,5 +421,5 @@
     flex-shrink: 0;
 }
 
-.stp-reset-position-btn:hover,
-.stp-clear-templates-btn:hover { background: #444; }
+.stb-reset-position-btn:hover,
+.stb-clear-templates-btn:hover { background: #444; }

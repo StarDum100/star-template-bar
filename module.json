@@ -1,6 +1,6 @@
 {
-  "id": "star-template-placer",
-  "title": "Star Template Placer",
+  "id": "star-template-bar",
+  "title": "Star Template Bar",
   "description": "Manage placed templates on the game map with a draggable template bar.",
   "version": "1.0.0",
   "authors": [

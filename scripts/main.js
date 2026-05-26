@@ -3,8 +3,8 @@
 // loading them in the same realm (e.g. as classic scripts, or a hot-reload re-eval) throws
 // "Identifier 'MODULE_ID' has already been declared".
 (function () {
-const MODULE_ID = "star-template-placer";
-const MODULE_TITLE = "Star Template Placer";
+const MODULE_ID = "star-template-bar";
+const MODULE_TITLE = "Star Template Bar";
 
 let configOpen = false;
 
@@ -218,11 +218,11 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         const name      = escapeHtml(String(f.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
         const safeColor = cssColor(t.fillColor);
-        const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}°` : "—";
+        const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}Â°` : "â€”";
         let distCell;
         if (t.t === "rect") {
             if (f.width != null && f.height != null) {
-                distCell = `${Math.round(f.width)}ft × ${Math.round(f.height)}ft`;
+                distCell = `${Math.round(f.width)}ft Ã— ${Math.round(f.height)}ft`;
             } else {
                 // templateDistanceFt returns the diagonal for direction-45 rects; convert to side length.
                 const dist = templateDistanceFt(t);
@@ -234,28 +234,28 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         } else if (t.t === "ray") {
             const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
             const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridWidthScale())}`;
-            distCell = `${rayDist}ft × ${rayWidth}ft`;
+            distCell = `${rayDist}ft Ã— ${rayWidth}ft`;
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
         }
         const moved = pendingMoveOriginals.has(t.id);
         return `
-            <tr data-id="${escapeHtml(t.id)}"${moved ? ' class="stp-pending-move"' : ''}>
+            <tr data-id="${escapeHtml(t.id)}"${moved ? ' class="stb-pending-move"' : ''}>
                 <td>${name}</td>
                 <td>${owner}</td>
                 <td>${escapeHtml(t.t)}</td>
                 <td>${distCell}</td>
                 <td>${angleCell}</td>
-                <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
-                <td class="stp-action-cell">
-                    <button type="button" class="stp-move-template-btn" title="Pick up and move this template">&#9999;</button>
-                    <button type="button" class="stp-remove-template-btn" title="Delete this template">&#10005;</button>
+                <td><span class="stb-color-swatch" style="background:${safeColor}"></span></td>
+                <td class="stb-action-cell">
+                    <button type="button" class="stb-move-template-btn" title="Pick up and move this template">&#9999;</button>
+                    <button type="button" class="stb-remove-template-btn" title="Delete this template">&#10005;</button>
                 </td>
             </tr>
         `;
     }).join("");
     return `
-        <table class="stp-config-table">
+        <table class="stb-config-table">
             <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Angle</th><th>Color</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
@@ -274,21 +274,21 @@ function applyBarPosition(bar, savedPos = game.user.getFlag(MODULE_ID, "barPosit
 
 function initBarDrag(bar) {
     let startX, startY, startLeft, startTop;
-    bar.find(".stp-bar-handle").on("mousedown", (e) => {
+    bar.find(".stb-bar-handle").on("mousedown", (e) => {
         e.preventDefault();
         startX    = e.clientX;
         startY    = e.clientY;
         startLeft = parseInt(bar.css("left")) || 0;
         startTop  = parseInt(bar.css("top"))  || 0;
 
-        $(document).on("mousemove.stp-drag", (e) => {
+        $(document).on("mousemove.stb-drag", (e) => {
             const left = Math.max(0, Math.min(window.innerWidth  - bar.outerWidth(),  startLeft + e.clientX - startX));
             const top  = Math.max(0, Math.min(window.innerHeight - bar.outerHeight(), startTop  + e.clientY - startY));
             bar.css({ left, top });
         });
 
-        $(document).on("mouseup.stp-drag", () => {
-            $(document).off("mousemove.stp-drag mouseup.stp-drag");
+        $(document).on("mouseup.stb-drag", () => {
+            $(document).off("mousemove.stb-drag mouseup.stb-drag");
             game.user.setFlag(MODULE_ID, "barPosition", {
                 left: parseInt(bar.css("left")),
                 top:  parseInt(bar.css("top")),
@@ -303,25 +303,25 @@ function renderCustomButtons(bar, overrides = {}) {
     const knownNames      = new Set(customTemplates.map(t => t.name));
     const byName          = Object.fromEntries(customTemplates.map(t => [t.name, t]));
 
-    const gridEl  = bar.find(".stp-custom-grid");
+    const gridEl  = bar.find(".stb-custom-grid");
     gridEl.empty();
 
     const multirow = grid.length > 1;
-    bar.toggleClass("stp-bar-multirow", multirow);
+    bar.toggleClass("stb-bar-multirow", multirow);
     if (multirow) {
         const maxCols = Math.max(...grid.map(r => r.length));
-        gridEl.css("--stp-cols", maxCols);
+        gridEl.css("--stb-cols", maxCols);
     } else {
-        gridEl.css("--stp-cols", "");
+        gridEl.css("--stb-cols", "");
     }
 
     for (const row of grid) {
-        const rowEl = $('<div class="stp-bar-row">');
+        const rowEl = $('<div class="stb-bar-row">');
         for (const name of row) {
             if (!knownNames.has(name)) continue;
             const tpl = byName[name];
             const btn = $("<button>")
-                .addClass("stp-custom-btn")
+                .addClass("stb-custom-btn")
                 .attr("title", `${tpl.name} (${tpl.t}, ${tpl.distance}ft)`)
                 .text(tpl.name);
             btn.css("border-left", `3px solid ${cssColor(tpl.fillColor)}`);
@@ -337,18 +337,18 @@ function makeCustomRow(tpl, index) {
     const safeType  = escapeHtml(tpl.t);
     const safeColor = cssColor(tpl.fillColor);
     const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft`
-                   : tpl.t === "rect" ? `${tpl.width ?? 5}ft × ${tpl.height ?? 5}ft`
-                   : "—";
-    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 53.13}°` : "—";
+                   : tpl.t === "rect" ? `${tpl.width ?? 5}ft Ã— ${tpl.height ?? 5}ft`
+                   : "â€”";
+    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 53.13}Â°` : "â€”";
     return `
         <tr data-index="${index}">
             <td>${safeName}</td>
             <td>${safeType}</td>
-            <td>${tpl.t === "rect" ? "—" : `${escapeHtml(String(tpl.distance))}ft`}</td>
+            <td>${tpl.t === "rect" ? "â€”" : `${escapeHtml(String(tpl.distance))}ft`}</td>
             <td>${widthCell}</td>
             <td>${angleCell}</td>
-            <td><span class="stp-color-swatch" style="background:${safeColor}"></span></td>
-            <td class="stp-delete-cell"><button type="button" class="stp-delete-btn">&#10005;</button></td>
+            <td><span class="stb-color-swatch" style="background:${safeColor}"></span></td>
+            <td class="stb-delete-cell"><button type="button" class="stb-delete-btn">&#10005;</button></td>
         </tr>
     `;
 }
@@ -361,34 +361,34 @@ function renderLayoutEditor(html, pendingGrid, pendingCustom) {
     const flat = pendingGrid.flat().filter(name => knownNames.has(name));
 
     if (flat.length === 0) {
-        panel.append('<p class="stp-layout-empty">No custom templates configured. Add templates on the Templates tab.</p>');
+        panel.append('<p class="stb-layout-empty">No custom templates configured. Add templates on the Templates tab.</p>');
         return;
     }
 
     const numRows = pendingGrid.length || 1;
     const numCols = Math.ceil(flat.length / numRows);
 
-    panel.append('<p class="stp-layout-hint">Drag any template to a slot to reorder &middot; Change the row count to reorganize the grid</p>');
+    panel.append('<p class="stb-layout-hint">Drag any template to a slot to reorder &middot; Change the row count to reorganize the grid</p>');
 
-    const controls = $('<div class="stp-layout-controls">');
-    const rowInput  = $('<input type="number" class="stp-rows-input">')
+    const controls = $('<div class="stb-layout-controls">');
+    const rowInput  = $('<input type="number" class="stb-rows-input">')
         .attr("min", 1).attr("max", flat.length).val(numRows);
-    controls.append($('<label class="stp-rows-label">').text("Number of Rows: ").append(rowInput));
+    controls.append($('<label class="stb-rows-label">').text("Number of Rows: ").append(rowInput));
     panel.append(controls);
 
-    const editor = $('<div class="stp-layout-editor">');
+    const editor = $('<div class="stb-layout-editor">');
     for (let r = 0; r < numRows; r++) {
-        const rowEl = $('<div class="stp-layout-row">');
+        const rowEl = $('<div class="stb-layout-row">');
         for (let c = 0; c < numCols; c++) {
             const idx = r * numCols + c;
             if (idx < flat.length) {
                 rowEl.append(
-                    $('<div class="stp-layout-tile" draggable="true">')
+                    $('<div class="stb-layout-tile" draggable="true">')
                         .attr("data-index", idx)
                         .text(flat[idx])
                 );
             } else {
-                rowEl.append($('<div class="stp-layout-slot">').attr("data-index", idx));
+                rowEl.append($('<div class="stb-layout-slot">').attr("data-index", idx));
             }
         }
         editor.append(rowEl);
@@ -406,32 +406,32 @@ function reshapeGrid(pendingGrid, numRows, flat = pendingGrid.flat()) {
 }
 
 function buildTemplateFormHtml(prefix, color) {
-    const p = `stp-${prefix}`;
+    const p = `stb-${prefix}`;
     const typeOptions = TEMPLATE_TYPES.map(t =>
         `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
     ).join("");
     return `
-        <div class="stp-form-row">
+        <div class="stb-form-row">
             <label>Shape</label>
             <select class="${p}type">${typeOptions}</select>
         </div>
-        <div class="stp-form-row ${p}distance-row">
+        <div class="stb-form-row ${p}distance-row">
             <label>Size (ft)</label>
             <input type="number" class="${p}distance" value="20" min="5" step="5">
         </div>
-        <div class="stp-form-row ${p}cone-row" style="display:none">
+        <div class="stb-form-row ${p}cone-row" style="display:none">
             <label>Angle (&deg;)</label>
             <input type="number" class="${p}angle" value="53.13" min="1" max="360">
         </div>
-        <div class="stp-form-row ${p}width-row" style="display:none">
+        <div class="stb-form-row ${p}width-row" style="display:none">
             <label>Width (ft)</label>
             <input type="number" class="${p}width" value="5" min="5" step="5">
         </div>
-        <div class="stp-form-row ${p}height-row" style="display:none">
+        <div class="stb-form-row ${p}height-row" style="display:none">
             <label>Height (ft)</label>
             <input type="number" class="${p}height" value="20" min="5" step="5">
         </div>
-        <div class="stp-form-row">
+        <div class="stb-form-row">
             <label>Color</label>
             <input type="color" class="${p}color" value="${escapeHtml(color)}">
         </div>
@@ -439,7 +439,7 @@ function buildTemplateFormHtml(prefix, color) {
 }
 
 function wireTypeToggle($html, prefix) {
-    const p = `stp-${prefix}`;
+    const p = `stb-${prefix}`;
     $html.on("change", `.${p}type`, (e) => {
         const type = e.target.value;
         $html.find(`.${p}cone-row`).toggle(type === "cone");
@@ -450,7 +450,7 @@ function wireTypeToggle($html, prefix) {
 }
 
 function readTemplateForm($html, prefix) {
-    const p = `stp-${prefix}`;
+    const p = `stb-${prefix}`;
     return {
         t:         $html.find(`.${p}type`).val(),
         distance:  Math.max(5, parseFloat($html.find(`.${p}distance`).val()) || 20),
@@ -466,7 +466,7 @@ async function openPlaceDialog() {
     const defaultColor = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : "#ff0000";
 
     const content = `
-        <div class="stp-place-form">
+        <div class="stb-place-form">
             ${buildTemplateFormHtml("", defaultColor)}
         </div>
     `;
@@ -513,11 +513,11 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
 
     let moveRequested = null;
 
-    const tab   = (name) => `stp-tab${name === initialTab ? " stp-tab-active" : ""}`;
-    const panel = (name) => `stp-tab-panel${name === initialTab ? "" : " stp-tab-panel-hidden"}`;
+    const tab   = (name) => `stb-tab${name === initialTab ? " stb-tab-active" : ""}`;
+    const panel = (name) => `stb-tab-panel${name === initialTab ? "" : " stb-tab-panel-hidden"}`;
 
     const renderTemplatesBody = () => pendingCustom.length === 0
-        ? '<tr class="stp-no-custom-row"><td colspan="7">No custom templates saved.</td></tr>'
+        ? '<tr class="stb-no-custom-row"><td colspan="7">No custom templates saved.</td></tr>'
         : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
 
     function renderMoveTab($html) {
@@ -525,7 +525,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         const templates = (canvas?.scene?.templates?.contents ?? [])
             .filter(canManageTemplate);
         if (templates.length === 0) {
-            movePanelEl.html('<p class="stp-move-empty">No templates on the map.</p>');
+            movePanelEl.html('<p class="stb-move-empty">No templates on the map.</p>');
         } else {
             movePanelEl.html(buildMoveContent(templates, pendingMoveOriginals));
         }
@@ -534,7 +534,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     function wireTemplatesTab($html) {
         wireTypeToggle($html, "new-");
 
-        $html.on("click", ".stp-delete-btn", (e) => {
+        $html.on("click", ".stb-delete-btn", (e) => {
             const index = parseInt($(e.currentTarget).closest("tr").data("index"));
             const name  = pendingCustom[index].name;
             pendingCustom.splice(index, 1);
@@ -549,8 +549,8 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
         });
 
-        $html.on("click", ".stp-add-btn", () => {
-            const name = $html.find(".stp-new-name").val().trim();
+        $html.on("click", ".stb-add-btn", () => {
+            const name = $html.find(".stb-new-name").val().trim();
             if (!name) {
                 ui.notifications.warn(`${MODULE_TITLE}: Template name is required.`);
                 return;
@@ -564,16 +564,16 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             if (pendingGrid.length === 0) pendingGrid.push([name]);
             else pendingGrid[pendingGrid.length - 1].push(name);
             $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
-            $html.find(".stp-new-name").val("").focus();
+            $html.find(".stb-new-name").val("").focus();
         });
 
-        $html.on("keydown", ".stp-new-name", (e) => {
-            if (e.key === "Enter") $html.find(".stp-add-btn").trigger("click");
+        $html.on("keydown", ".stb-new-name", (e) => {
+            if (e.key === "Enter") $html.find(".stb-add-btn").trigger("click");
         });
     }
 
     function wireMoveTab($html, dialog) {
-        $html.on("click", ".stp-remove-template-btn", async (e) => {
+        $html.on("click", ".stb-remove-template-btn", async (e) => {
             const row = $(e.currentTarget).closest("tr");
             const id  = row.attr("data-id");
             const stagedTpl = canvas?.scene?.templates?.get(id);
@@ -592,11 +592,11 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             }
             row.remove();
             if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
-                $html.find('[data-panel="move"]').html('<p class="stp-move-empty">No templates on the map.</p>');
+                $html.find('[data-panel="move"]').html('<p class="stb-move-empty">No templates on the map.</p>');
             }
         });
 
-        $html.on("click", ".stp-move-template-btn", (e) => {
+        $html.on("click", ".stb-move-template-btn", (e) => {
             const id  = $(e.currentTarget).closest("tr").attr("data-id");
             const tpl = canvas?.scene?.templates?.get(id);
             if (!tpl) return;
@@ -608,30 +608,30 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     function wireLayoutTab($html) {
         let dragIndex = -1;
 
-        $html.on("dragstart", ".stp-layout-tile", (e) => {
+        $html.on("dragstart", ".stb-layout-tile", (e) => {
             dragIndex = parseInt($(e.currentTarget).data("index"));
             e.originalEvent.dataTransfer.effectAllowed = "move";
-            setTimeout(() => $(e.currentTarget).addClass("stp-dragging"), 0);
+            setTimeout(() => $(e.currentTarget).addClass("stb-dragging"), 0);
         });
 
-        $html.on("dragend", ".stp-layout-tile", () => {
-            $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-dragging stp-slot-over");
+        $html.on("dragend", ".stb-layout-tile", () => {
+            $html.find(".stb-layout-tile, .stb-layout-slot").removeClass("stb-dragging stb-slot-over");
             dragIndex = -1;
         });
 
-        $html.on("dragover", ".stp-layout-tile, .stp-layout-slot", (e) => {
+        $html.on("dragover", ".stb-layout-tile, .stb-layout-slot", (e) => {
             const idx = parseInt($(e.currentTarget).data("index"));
             if (dragIndex === -1 || idx === dragIndex) return;
             e.preventDefault();
-            $html.find(".stp-layout-tile, .stp-layout-slot").removeClass("stp-slot-over");
-            $(e.currentTarget).addClass("stp-slot-over");
+            $html.find(".stb-layout-tile, .stb-layout-slot").removeClass("stb-slot-over");
+            $(e.currentTarget).addClass("stb-slot-over");
         });
 
-        $html.on("dragleave", ".stp-layout-tile, .stp-layout-slot", (e) => {
-            $(e.currentTarget).removeClass("stp-slot-over");
+        $html.on("dragleave", ".stb-layout-tile, .stb-layout-slot", (e) => {
+            $(e.currentTarget).removeClass("stb-slot-over");
         });
 
-        $html.on("drop", ".stp-layout-tile, .stp-layout-slot", (e) => {
+        $html.on("drop", ".stb-layout-tile, .stb-layout-slot", (e) => {
             e.preventDefault();
             const tgtIdx = parseInt($(e.currentTarget).data("index"));
             const srcIdx = dragIndex;
@@ -648,7 +648,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             renderLayoutEditor($html, pendingGrid, pendingCustom);
         });
 
-        $html.on("change", ".stp-rows-input", (e) => {
+        $html.on("change", ".stb-rows-input", (e) => {
             const flat = pendingGrid.flat();
             let n = parseInt(e.target.value);
             if (isNaN(n) || n < 1) n = 1;
@@ -660,14 +660,14 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     }
 
     function wireExtraTab($html) {
-        $html.on("change", ".stp-hide-bar-checkbox", (e) => {
+        $html.on("change", ".stb-hide-bar-checkbox", (e) => {
             if (e.target.checked) bar.hide();
             else                  bar.show();
         });
     }
 
     function wireResetTab($html) {
-        $html.on("click", ".stp-reset-position-btn", () => {
+        $html.on("click", ".stb-reset-position-btn", () => {
             if (!pendingResetPosition) {
                 originalPosition = {
                     left: parseInt(bar.css("left")),
@@ -678,13 +678,13 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             applyBarPosition(bar, null);
         });
 
-        $html.on("click", ".stp-clear-templates-btn", () => {
+        $html.on("click", ".stb-clear-templates-btn", () => {
             pendingClearTemplates = true;
             pendingCustom.splice(0);
             pendingGrid.splice(0, pendingGrid.length, []);
             $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
 
-            if (!$html.find("[data-panel='layout']").hasClass("stp-tab-panel-hidden")) {
+            if (!$html.find("[data-panel='layout']").hasClass("stb-tab-panel-hidden")) {
                 renderLayoutEditor($html, pendingGrid, pendingCustom);
             }
 
@@ -693,7 +693,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     }
 
     const content = `
-        <div class="stp-tabs">
+        <div class="stb-tabs">
             <button type="button" class="${tab("templates")}" data-tab="templates">Templates</button>
             <button type="button" class="${tab("move")}"      data-tab="move">Move</button>
             <button type="button" class="${tab("layout")}"    data-tab="layout">Layout</button>
@@ -701,7 +701,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             <button type="button" class="${tab("extra")}"     data-tab="extra">Extra</button>
         </div>
         <div class="${panel("templates")}" data-panel="templates">
-            <table class="stp-config-table">
+            <table class="stb-config-table">
                 <thead>
                     <tr><th>Name</th><th>Shape</th><th>Size</th><th>Width</th><th>Angle</th><th>Color</th><th></th></tr>
                 </thead>
@@ -709,23 +709,23 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     ${renderTemplatesBody()}
                 </tbody>
             </table>
-            <div class="stp-add-section">
-                <div class="stp-add-form">
-                    <div class="stp-form-row">
+            <div class="stb-add-section">
+                <div class="stb-add-form">
+                    <div class="stb-form-row">
                         <label>Name</label>
-                        <input type="text" class="stp-new-name" placeholder="e.g. Fireball">
+                        <input type="text" class="stb-new-name" placeholder="e.g. Fireball">
                     </div>
                     ${buildTemplateFormHtml("new-", "#ff0000")}
-                    <button type="button" class="stp-add-btn">Add Template</button>
+                    <button type="button" class="stb-add-btn">Add Template</button>
                 </div>
             </div>
         </div>
         <div class="${panel("layout")}" data-panel="layout"></div>
         <div class="${panel("move")}" data-panel="move"></div>
         <div class="${panel("extra")}" data-panel="extra">
-            <div class="stp-extra-panel">
-                <label class="stp-extra-item">
-                    <input type="checkbox" class="stp-hide-bar-checkbox"${barHidden ? " checked" : ""}>
+            <div class="stb-extra-panel">
+                <label class="stb-extra-item">
+                    <input type="checkbox" class="stb-hide-bar-checkbox"${barHidden ? " checked" : ""}>
                     <div>
                         <strong>Hide Button Bar</strong>
                         <p>Hide the button bar from the screen.</p>
@@ -735,27 +735,27 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             </div>
         </div>
         <div class="${panel("reset")}" data-panel="reset">
-            <div class="stp-reset-panel">
-                <div class="stp-reset-item">
+            <div class="stb-reset-panel">
+                <div class="stb-reset-item">
                     <div>
                         <strong>Reset Bar Position</strong>
                         <p>Move the button bar to the default position at the top center of the screen.</p>
                     </div>
-                    <button type="button" class="stp-reset-position-btn">Reset Position</button>
+                    <button type="button" class="stb-reset-position-btn">Reset Position</button>
                 </div>
-                <div class="stp-reset-item">
+                <div class="stb-reset-item">
                     <div>
                         <strong>Clear All Templates</strong>
                         <p>Remove every template from the bar.</p>
                     </div>
-                    <button type="button" class="stp-clear-templates-btn">Clear Templates</button>
+                    <button type="button" class="stb-clear-templates-btn">Clear Templates</button>
                 </div>
             </div>
         </div>
     `;
 
     await foundry.applications.api.DialogV2.wait({
-        window:      { title: "Star Template Placer — Configure (save to persist changes)" },
+        window:      { title: "Star Template Bar â€” Configure (save to persist changes)" },
         content,
         rejectClose: false,
         buttons: [
@@ -771,7 +771,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     if (pendingResetPosition) {
                         await game.user.unsetFlag(MODULE_ID, "barPosition");
                     }
-                    const newBarHidden = $html.find(".stp-hide-bar-checkbox").prop("checked");
+                    const newBarHidden = $html.find(".stb-hide-bar-checkbox").prop("checked");
                     await game.settings.set(MODULE_ID, "barHidden", newBarHidden);
                     if (newBarHidden) bar.hide();
                     else             bar.show();
@@ -783,12 +783,12 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         render: (event, dialog) => {
             const $html = $(dialog.element);
 
-            $html.on("click", ".stp-tab", (e) => {
+            $html.on("click", ".stb-tab", (e) => {
                 const tabName = e.currentTarget.dataset.tab;
-                $html.find(".stp-tab").removeClass("stp-tab-active");
-                $(e.currentTarget).addClass("stp-tab-active");
-                $html.find(".stp-tab-panel").addClass("stp-tab-panel-hidden");
-                $html.find(`[data-panel="${tabName}"]`).removeClass("stp-tab-panel-hidden");
+                $html.find(".stb-tab").removeClass("stb-tab-active");
+                $(e.currentTarget).addClass("stb-tab-active");
+                $html.find(".stb-tab-panel").addClass("stb-tab-panel-hidden");
+                $html.find(`[data-panel="${tabName}"]`).removeClass("stb-tab-panel-hidden");
                 if (tabName === "move")   renderMoveTab($html);
                 if (tabName === "layout") renderLayoutEditor($html, pendingGrid, pendingCustom);
             });
@@ -867,22 +867,22 @@ Hooks.once("init", () => {
         type: Boolean,
         default: false,
         onChange: (value) => {
-            if (value) $(".stp-template-bar").hide();
-            else       $(".stp-template-bar").show();
+            if (value) $(".stb-template-bar").hide();
+            else       $(".stb-template-bar").show();
         },
     });
 });
 
 Hooks.once("ready", () => {
     configOpen = false;
-    const bar = $(`<div class="stp-template-bar">
-        <div class="stp-bar-controls">
-            <span class="stp-bar-handle" title="Drag to move bar">&#8801;</span>
-            <button class="stp-place-btn" title="Place a template on the map">&#8853; Place</button>
-            <button class="stp-move-btn" title="Move or remove placed templates">&#8597; Move</button>
-            <button class="stp-config-btn" title="Configure templates">&#9881;</button>
+    const bar = $(`<div class="stb-template-bar">
+        <div class="stb-bar-controls">
+            <span class="stb-bar-handle" title="Drag to move bar">&#8801;</span>
+            <button class="stb-place-btn" title="Place a template on the map">&#8853; Place</button>
+            <button class="stb-move-btn" title="Move or remove placed templates">&#8597; Move</button>
+            <button class="stb-config-btn" title="Configure templates">&#9881;</button>
         </div>
-        <div class="stp-custom-grid"></div>
+        <div class="stb-custom-grid"></div>
     </div>`);
 
     $("body").append(bar);
@@ -895,8 +895,8 @@ Hooks.once("ready", () => {
         if (game.settings.get(MODULE_ID, "barHidden")) bar.hide();
     });
 
-    bar.find(".stp-place-btn").on("click",  () => openPlaceDialog());
-    bar.find(".stp-move-btn").on("click", () => {
+    bar.find(".stb-place-btn").on("click",  () => openPlaceDialog());
+    bar.find(".stb-move-btn").on("click", () => {
         if (configOpen) return;
         if (!canvas?.scene) {
             ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
@@ -910,7 +910,7 @@ Hooks.once("ready", () => {
         configOpen = true;
         openConfig(bar, "move").finally(() => { configOpen = false; });
     });
-    bar.find(".stp-config-btn").on("click", () => {
+    bar.find(".stb-config-btn").on("click", () => {
         if (configOpen) return;
         configOpen = true;
         openConfig(bar).finally(() => { configOpen = false; });

@@ -2,7 +2,7 @@ const manifest = require("../module.json");
 
 describe("module.json", () => {
     it("has the correct id", () => {
-        expect(manifest.id).toBe("star-template-placer");
+        expect(manifest.id).toBe("star-template-bar");
     });
 
     it("has a title", () => {
