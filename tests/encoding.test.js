@@ -5,14 +5,15 @@ const FILES = [
     path.join(__dirname, "../scripts/main.js"),
     path.join(__dirname, "../styles/styles.css"),
     path.join(__dirname, "main.test.js"),
+    path.join(__dirname, "encoding.test.js"),
 ];
 
-// Each string is a JS unicode escape sequence so this file stays pure ASCII.
-// At runtime JS decodes them into the two-byte signature of Windows-1252 double-encoding.
+// String.fromCodePoint keeps this file pure ASCII while producing the runtime
+// sequences that mark Windows-1252 double-encoding corruption.
 const MOJIBAKE = [
-    ["\u00C2\u00B0", "double-encoded degree sign"],
-    ["\u00C3\u2014", "double-encoded multiplication sign"],
-    ["\u00E2\u20AC", "double-encoded em-dash or curly quote"],
+    [String.fromCodePoint(0x00C2, 0x00B0),  "double-encoded degree sign"],
+    [String.fromCodePoint(0x00C3, 0x2014), "double-encoded multiplication sign"],
+    [String.fromCodePoint(0x00E2, 0x20AC), "double-encoded em-dash or curly quote"],
 ];
 
 describe("encoding", () => {
