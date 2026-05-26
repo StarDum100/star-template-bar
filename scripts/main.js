@@ -1,4 +1,4 @@
-// IIFE so module-scoped declarations (MODULE_ID, MODULE_TITLE, etc.) never leak into a
+﻿// IIFE so module-scoped declarations (MODULE_ID, MODULE_TITLE, etc.) never leak into a
 // shared/global scope. Sibling modules each declare `const MODULE_ID`; without this wrapper,
 // loading them in the same realm (e.g. as classic scripts, or a hot-reload re-eval) throws
 // "Identifier 'MODULE_ID' has already been declared".
@@ -218,11 +218,11 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         const name      = escapeHtml(String(f.name ?? ""));
         const owner     = escapeHtml(templateOwnerName(t));
         const safeColor = cssColor(t.fillColor);
-        const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}Â°` : "â€”";
+        const angleCell = t.t === "cone" ? `${f.angle ?? t.angle ?? 53.13}&deg;` : "&mdash;";
         let distCell;
         if (t.t === "rect") {
             if (f.width != null && f.height != null) {
-                distCell = `${Math.round(f.width)}ft Ã— ${Math.round(f.height)}ft`;
+                distCell = `${Math.round(f.width)}ft &times; ${Math.round(f.height)}ft`;
             } else {
                 // templateDistanceFt returns the diagonal for direction-45 rects; convert to side length.
                 const dist = templateDistanceFt(t);
@@ -234,7 +234,7 @@ function buildMoveContent(templates, pendingMoveOriginals) {
         } else if (t.t === "ray") {
             const rayDist  = f.distance != null ? `${f.distance}` : `${templateDistanceFt(t)}`;
             const rayWidth = f.width    != null ? `${f.width}`    : `${Math.round((t.width ?? 0) / gridWidthScale())}`;
-            distCell = `${rayDist}ft Ã— ${rayWidth}ft`;
+            distCell = `${rayDist}ft &times; ${rayWidth}ft`;
         } else {
             distCell = f.distance != null ? `${f.distance}ft` : `${templateDistanceFt(t)}ft`;
         }
@@ -337,14 +337,14 @@ function makeCustomRow(tpl, index) {
     const safeType  = escapeHtml(tpl.t);
     const safeColor = cssColor(tpl.fillColor);
     const widthCell = tpl.t === "ray"  ? `${tpl.width ?? 5}ft`
-                   : tpl.t === "rect" ? `${tpl.width ?? 5}ft Ã— ${tpl.height ?? 5}ft`
-                   : "â€”";
-    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 53.13}Â°` : "â€”";
+                   : tpl.t === "rect" ? `${tpl.width ?? 5}ft &times; ${tpl.height ?? 5}ft`
+                   : "&mdash;";
+    const angleCell = tpl.t === "cone" ? `${tpl.angle ?? 53.13}&deg;` : "&mdash;";
     return `
         <tr data-index="${index}">
             <td>${safeName}</td>
             <td>${safeType}</td>
-            <td>${tpl.t === "rect" ? "â€”" : `${escapeHtml(String(tpl.distance))}ft`}</td>
+            <td>${tpl.t === "rect" ? "&mdash;" : `${escapeHtml(String(tpl.distance))}ft`}</td>
             <td>${widthCell}</td>
             <td>${angleCell}</td>
             <td><span class="stb-color-swatch" style="background:${safeColor}"></span></td>
@@ -755,7 +755,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     `;
 
     await foundry.applications.api.DialogV2.wait({
-        window:      { title: "Star Template Bar â€” Configure (save to persist changes)" },
+        window:      { title: "Star Template Bar — Configure (save to persist changes)" },
         content,
         rejectClose: false,
         buttons: [

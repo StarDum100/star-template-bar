@@ -1,4 +1,4 @@
-const $ = require("jquery");
+﻿const $ = require("jquery");
 
 const hookCallbacks = {};
 
@@ -102,11 +102,11 @@ require("../scripts/main.js");
 const _origWindowAEL = window.addEventListener.bind(window);
 window.addEventListener = jest.fn((...args) => _origWindowAEL(...args));
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Helpers ---------------------------------------------------------------
 
 // Lets pending promise continuations settle before assertions run. A single
-// macrotask tick (setTimeout 0) drains the entire microtask queue â€” including
-// chained awaits like delete â†’ create â†’ catch â†’ create â€” because the queue is
+// macrotask tick (setTimeout 0) drains the entire microtask queue — including
+// chained awaits like delete -> create -> catch -> create — because the queue is
 // fully emptied before the timer fires. The mocked DB ops resolve synchronously
 // (no real timers), so one flush is always enough regardless of chain length.
 const flushAsync = () => new Promise(r => setTimeout(r, 0));
@@ -206,7 +206,7 @@ function openConfigOnMoveTab(templates, { isGM = false } = {}) {
     return openDialogHtml();
 }
 
-// â”€â”€ Star Template Bar (integration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Star Template Bar (integration) ------------------------------------
 
 describe("Star Template Bar", () => {
     describe("init hook", () => {
@@ -299,7 +299,7 @@ describe("Star Template Bar", () => {
             global.requestAnimationFrame = cb => { rafCb = cb; };
             try {
                 setupBar();
-                // RAF scheduled but not yet fired â€” position not yet applied
+                // RAF scheduled but not yet fired — position not yet applied
                 const bar = document.querySelector(".stb-template-bar");
                 expect(bar.style.left).toBe("");
                 expect(bar.style.top).toBe("");
@@ -742,17 +742,17 @@ describe("Star Template Bar", () => {
             });
 
             it("divides stored distance by grid.size/20 to display feet", () => {
-                // stored distance = 100, gridDist = (100/20) = 5 â†’ 100/5 = 20ft
+                // stored distance = 100, gridDist = (100/20) = 5 -> 100/5 = 20ft
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 100)]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
-            it("shows distance Ã— width for ray templates from template data", () => {
-                // stored distance=100 â†’ gridDist=5 â†’ 20ft; stored width=100 â†’ gridWidthScale=20 â†’ 5ft
+            it("shows distance × width for ray templates from template data", () => {
+                // stored distance=100 -> gridDist=5 -> 20ft; stored width=100 -> gridWidthScale=20 -> 5ft
                 const tpl = makeTemplate("t1", "user-001", "ray", 100);
                 tpl.width = 100;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft Ã— 5ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 5ft");
             });
 
             it("ray with width=0 shows 0ft width, not distance", () => {
@@ -760,32 +760,32 @@ describe("Star Template Bar", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 100);
                 tpl.width = 0;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft Ã— 0ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft × 0ft");
             });
 
-            it("shows distance Ã— width for ray templates from flags", () => {
+            it("shows distance × width for ray templates from flags", () => {
                 const tpl = makeTemplate("t1", "user-001", "ray", 4);
                 tpl.flags = { "star-template-bar": { distance: 100, width: 5 } };
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("100ft Ã— 5ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("100ft × 5ft");
             });
 
-            it("shows width Ã— height for rect from flags in the move tab", () => {
+            it("shows width × height for rect from flags in the move tab", () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 5);
                 tpl.flags = { "star-template-bar": { width: 30, height: 40 } };
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("30ft Ã— 40ft");
+                expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("30ft × 40ft");
             });
 
             it("shows computed distance for rect when flags are absent", () => {
-                // stored=100, gridDist=5 â†’ 20ft; direction=0 so no âˆš2 correction
+                // stored=100, gridDist=5 -> 20ft; direction=0 so no sqrt2 correction
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 const { html } = openConfigOnMoveTab([tpl]);
                 expect(html.find('[data-panel="move"] tbody td').eq(3).text()).toBe("20ft");
             });
 
             it("shows side length for direction-45 rect when flags are absent", () => {
-                // stored=100, gridDist=5 â†’ dist=20 â†’ side=round(20/âˆš2)=14ft
+                // stored=100, gridDist=5 -> dist=20 -> side=round(20/sqrt2)=14ft
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 tpl.direction = 45;
                 const { html } = openConfigOnMoveTab([tpl]);
@@ -798,12 +798,12 @@ describe("Star Template Bar", () => {
                 const tpl = makeTemplate("t1", "user-001", "cone", 4);
                 tpl.angle = 90;
                 const { html } = openConfigOnMoveTab([tpl]);
-                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("90Â°");
+                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("90°");
             });
 
             it("shows dash for angle when template is not a cone", () => {
                 const { html } = openConfigOnMoveTab([makeTemplate("t1", "user-001", "circle", 4)]);
-                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("â€”");
+                expect(html.find('[data-panel="move"] tbody td').eq(4).text()).toBe("—");
             });
 
             it("only shows templates owned by the current non-GM user", () => {
@@ -909,7 +909,7 @@ describe("Star Template Bar", () => {
             });
 
             it("recreated template uses unscaled distance for non-module template on Cancel", async () => {
-                // stored distance=100, gridDist=5 â†’ createEmbeddedDocuments should receive 100/5=20
+                // stored distance=100, gridDist=5 -> createEmbeddedDocuments should receive 100/5=20
                 const tpl = makeTemplate("t1", "user-001", "circle", 100);
                 await deleteAndCancel(tpl);
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
@@ -1105,7 +1105,7 @@ describe("Star Template Bar", () => {
                 html.find("[data-tab='move']").trigger("click");
                 const sizeCell = html.find('[data-panel="move"] tbody td').eq(3).text();
                 expect(sizeCell).not.toContain("Infinity");
-                expect(sizeCell).toBe("20ft Ã— 1ft");
+                expect(sizeCell).toBe("20ft × 1ft");
             });
         });
 
@@ -1166,7 +1166,7 @@ describe("Star Template Bar", () => {
 
             it("moving a non-module direction-45 rect injects side-length flags", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // stored distance=100 â†’ gridDist=5 â†’ input=20 â†’ side = round(20/âˆš2) = 14
+                // stored distance=100 -> gridDist=5 -> input=20 -> side = round(20/sqrt2) = 14
                 const tpl = makeTemplate("t1", "user-001", "rect", 100);
                 tpl.toObject.mockReturnValue({
                     t: "rect", distance: 100, width: 0, direction: 45,
@@ -1194,7 +1194,7 @@ describe("Star Template Bar", () => {
 
             it("moving a non-module ray divides width by gridWidthScale (size/distance)", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // grid.size=100, grid.distance=5 â†’ gridWidthScale=20; stored width=100 â†’ passes 100/20=5
+                // grid.size=100, grid.distance=5 -> gridWidthScale=20; stored width=100 -> passes 100/20=5
                 const tpl = makeTemplate("t1", "user-001", "ray", 500);
                 tpl.toObject.mockReturnValue({
                     t: "ray", distance: 500, width: 100, direction: 0,
@@ -1215,7 +1215,7 @@ describe("Star Template Bar", () => {
 
             it("moving a non-module ray stores distance and width as module flags", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // distance=500â†’100ft, width=100â†’5ft; stored flags should have {distance:100,width:5,_nonModule:true}
+                // distance=500->100ft, width=100->5ft; stored flags should have {distance:100,width:5,_nonModule:true}
                 const tpl = makeTemplate("t1", "user-001", "ray", 500);
                 tpl.toObject.mockReturnValue({
                     t: "ray", distance: 500, width: 100, direction: 0,
@@ -1242,7 +1242,7 @@ describe("Star Template Bar", () => {
 
             it("moving a non-module circle stores distance as module flags", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // distance=20â†’4ft (20/5=4); stored flags should have {distance:4,_nonModule:true}
+                // distance=20->4ft (20/5=4); stored flags should have {distance:4,_nonModule:true}
                 const tpl = makeTemplate("t1", "user-001", "circle", 20);
                 tpl.toObject.mockReturnValue({
                     t: "circle", distance: 20, width: 0, direction: 0,
@@ -1283,7 +1283,7 @@ describe("Star Template Bar", () => {
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
-                // width=40 stored â†’ 40/20=2ft passed (not clamped to 5)
+                // width=40 stored -> 40/20=2ft passed (not clamped to 5)
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({ width: 2 })]
@@ -1384,7 +1384,7 @@ describe("Star Template Bar", () => {
                 );
             });
 
-            it("preview for rect uses flag width and height Ã— SQRT2 as distance", async () => {
+            it("preview for rect uses flag width and height × SQRT2 as distance", async () => {
                 const tpl = makeTemplate("t1", "user-001", "rect", 999);
                 tpl.toObject.mockReturnValue({
                     t: "rect", distance: 999, width: 999, direction: 45, x: 100, y: 100,
@@ -1403,7 +1403,7 @@ describe("Star Template Bar", () => {
             });
 
             it("preview corrects v14 scaling for non-module templates", async () => {
-                // Stored distance=7 with grid.size=100 â†’ gridDist=5 â†’ preview distance=7/5=1.4
+                // Stored distance=7 with grid.size=100 -> gridDist=5 -> preview distance=7/5=1.4
                 const tpl = makeTemplate("t1", "user-001", "circle", 7);
                 openConfigOnMoveTab([tpl]);
                 global.CONFIG.MeasuredTemplate.documentClass.mockClear();
@@ -1447,7 +1447,7 @@ describe("Star Template Bar", () => {
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
-                // distance 100 â†’ gridDist 5 â†’ 20; angle preserved at 60
+                // distance 100 -> gridDist 5 -> 20; angle preserved at 60
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
                     [expect.objectContaining({
@@ -1502,7 +1502,7 @@ describe("Star Template Bar", () => {
                 const { html: html2 } = openDialogHtml();
                 html2.find(".stb-remove-template-btn").eq(0).trigger("click");
                 await flushAsync();
-                // Cancel â€” should restore exactly one template, at the original position
+                // Cancel — should restore exactly one template, at the original position
                 global.canvas.scene.createEmbeddedDocuments.mockClear();
                 global.foundry.applications.api.DialogV2.__resolveDialog(null);
                 await flushAsync();
@@ -1525,8 +1525,8 @@ describe("Star Template Bar", () => {
                     .mockRejectedValueOnce(new Error("placement denied"))
                     .mockResolvedValue([]);
                 await simulateCanvasClick();
-                // One macrotask tick drains the whole microtask chain (delete â†’ create-rejects â†’
-                // catch â†’ create-to-restore); the mocks settle synchronously so no extra ticks are needed.
+                // One macrotask tick drains the whole microtask chain (delete -> create-rejects ->
+                // catch -> create-to-restore); the mocks settle synchronously so no extra ticks are needed.
                 await flushAsync();
                 // First create (the moved copy) rejected; original is recreated at its start position
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
@@ -1768,7 +1768,7 @@ describe("Star Template Bar", () => {
             });
         });
 
-        describe("templates tab â€” empty state", () => {
+        describe("templates tab — empty state", () => {
             it("shows the no-custom-templates message when there are no custom templates", () => {
                 setupBar();
                 document.querySelector(".stb-config-btn").click();
@@ -1788,7 +1788,7 @@ describe("Star Template Bar", () => {
             });
         });
 
-        describe("templates tab â€” add template", () => {
+        describe("templates tab — add template", () => {
             let html;
             beforeEach(() => {
                 global.ui.notifications.warn.mockClear();
@@ -1912,7 +1912,7 @@ describe("Star Template Bar", () => {
                 html.find(".stb-new-height").val("20");
                 html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(3).text()).toBe("15ft Ã— 20ft");
+                expect(cells.eq(3).text()).toBe("15ft × 20ft");
             });
 
             it("shows width in feet for ray type", () => {
@@ -1929,17 +1929,17 @@ describe("Star Template Bar", () => {
                 html.find(".stb-new-type").val("circle");
                 html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(3).text()).toBe("â€”");
+                expect(cells.eq(3).text()).toBe("—");
             });
 
-            it("shows width Ã— height for rect type", () => {
+            it("shows width × height for rect type", () => {
                 html.find(".stb-new-name").val("Wall");
                 html.find(".stb-new-type").val("rect").trigger("change");
                 html.find(".stb-new-width").val("10");
                 html.find(".stb-new-height").val("30");
                 html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(3).text()).toBe("10ft Ã— 30ft");
+                expect(cells.eq(3).text()).toBe("10ft × 30ft");
             });
 
             it("shows angle in degrees for cone type", () => {
@@ -1948,7 +1948,7 @@ describe("Star Template Bar", () => {
                 html.find(".stb-new-angle").val("90");
                 html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(4).text()).toBe("90Â°");
+                expect(cells.eq(4).text()).toBe("90°");
             });
 
             it("shows dash for angle when type is not cone", () => {
@@ -1956,7 +1956,7 @@ describe("Star Template Bar", () => {
                 html.find(".stb-new-type").val("circle");
                 html.find(".stb-add-btn").trigger("click");
                 const cells = html.find("tbody tr[data-index] td");
-                expect(cells.eq(4).text()).toBe("â€”");
+                expect(cells.eq(4).text()).toBe("—");
             });
 
             it("Enter in name field triggers add", () => {
@@ -1988,7 +1988,7 @@ describe("Star Template Bar", () => {
             });
         });
 
-        describe("templates tab â€” delete template", () => {
+        describe("templates tab — delete template", () => {
             it("removes the row from the table when delete is clicked", () => {
                 setupBar({
                     customTemplates: [
