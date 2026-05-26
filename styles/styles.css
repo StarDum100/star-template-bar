@@ -409,14 +409,17 @@
     margin: 3px 0 0;
 }
 
-.stp-reset-position-btn {
+.stp-reset-position-btn,
+.stp-clear-templates-btn {
+    white-space: nowrap;
     background: #2c2c2c;
     border: 1px solid #555;
     border-radius: 4px;
     color: white;
     cursor: pointer;
     padding: 4px 10px;
-    align-self: flex-start;
+    flex-shrink: 0;
 }
 
-.stp-reset-position-btn:hover { background: #444; }
+.stp-reset-position-btn:hover,
+.stp-clear-templates-btn:hover { background: #444; }

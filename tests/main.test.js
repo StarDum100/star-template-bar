@@ -2268,6 +2268,79 @@ describe("Star Template Placer", () => {
                 expect(document.querySelector(".stp-template-bar").style.left).toBe("200px");
                 expect(document.querySelector(".stp-template-bar").style.top).toBe("150px");
             });
+
+            describe("Clear All Templates button", () => {
+                it("is present in the reset panel", () => {
+                    expect(html.find(".stp-clear-templates-btn")).toHaveLength(1);
+                });
+
+                it("removes all template rows and shows empty state in templates tab", () => {
+                    setupBar({
+                        customTemplates: [
+                            { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                            { name: "Fog",      t: "circle", distance: 30, angle: 57, fillColor: "#aaaaaa" },
+                        ]
+                    });
+                    document.querySelector(".stp-config-btn").click();
+                    const { html: localHtml } = openDialogHtml();
+                    localHtml.find("[data-tab='reset']").trigger("click");
+                    localHtml.find(".stp-clear-templates-btn").trigger("click");
+                    localHtml.find("[data-tab='templates']").trigger("click");
+                    expect(localHtml.find('[data-panel="templates"] tbody tr[data-index]')).toHaveLength(0);
+                    expect(localHtml.find(".stp-no-custom-row")).toHaveLength(1);
+                });
+
+                it("removes all custom buttons from the bar immediately", () => {
+                    setupBar({
+                        customTemplates: [
+                            { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                        ]
+                    });
+                    document.querySelector(".stp-config-btn").click();
+                    const { html: localHtml } = openDialogHtml();
+                    localHtml.find("[data-tab='reset']").trigger("click");
+                    localHtml.find(".stp-clear-templates-btn").trigger("click");
+                    expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(0);
+                });
+
+                it("saves empty customTemplates and barGrid arrays on Save", async () => {
+                    setupBar({
+                        customTemplates: [
+                            { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                        ]
+                    });
+                    document.querySelector(".stp-config-btn").click();
+                    const { html: localHtml, options } = openDialogHtml();
+                    localHtml.find("[data-tab='reset']").trigger("click");
+                    localHtml.find(".stp-clear-templates-btn").trigger("click");
+                    global.game.user.setFlag.mockClear();
+                    const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+                    const saveBtn = options.buttons.find(b => b.action === "save");
+                    await saveBtn.callback(null, null, { element: container });
+                    expect(global.game.user.setFlag).toHaveBeenCalledWith(
+                        "star-template-placer", "customTemplates", []
+                    );
+                    expect(global.game.user.setFlag).toHaveBeenCalledWith(
+                        "star-template-placer", "barGrid", expect.any(Array)
+                    );
+                });
+
+                it("restores bar buttons on Cancel", async () => {
+                    setupBar({
+                        customTemplates: [
+                            { name: "Fireball", t: "circle", distance: 20, angle: 57, fillColor: "#ff0000" },
+                        ]
+                    });
+                    document.querySelector(".stp-config-btn").click();
+                    const { html: localHtml } = openDialogHtml();
+                    localHtml.find("[data-tab='reset']").trigger("click");
+                    localHtml.find(".stp-clear-templates-btn").trigger("click");
+                    expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(0);
+                    global.foundry.applications.api.DialogV2.__resolveDialog(null);
+                    await flushAsync();
+                    expect(document.querySelectorAll(".stp-custom-btn")).toHaveLength(1);
+                });
+            });
         });
     });
 

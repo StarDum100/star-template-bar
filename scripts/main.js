@@ -504,9 +504,10 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     const pendingCustom = resumeState?.pendingCustom ?? [...getCustomTemplates()];
     const pendingGrid   = resumeState?.pendingGrid   ?? getBarGrid(pendingCustom).map(row => [...row]);
 
-    let saved                = false;
-    let pendingResetPosition = resumeState?.pendingResetPosition ?? false;
-    let originalPosition     = resumeState?.originalPosition     ?? null;
+    let saved                 = false;
+    let pendingResetPosition  = resumeState?.pendingResetPosition ?? false;
+    let originalPosition      = resumeState?.originalPosition     ?? null;
+    let pendingClearTemplates = false;
     const pendingRemovalOriginals = resumeState?.pendingRemovalOriginals ?? new Map();
     const pendingMoveOriginals     = resumeState?.pendingMoveOriginals     ?? new Map();
 
@@ -676,6 +677,19 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             pendingResetPosition = true;
             applyBarPosition(bar, null);
         });
+
+        $html.on("click", ".stp-clear-templates-btn", () => {
+            pendingClearTemplates = true;
+            pendingCustom.splice(0);
+            pendingGrid.splice(0, pendingGrid.length, []);
+            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
+
+            if (!$html.find("[data-panel='layout']").hasClass("stp-tab-panel-hidden")) {
+                renderLayoutEditor($html, pendingGrid, pendingCustom);
+            }
+
+            renderCustomButtons(bar, { customTemplates: [], grid: [[]] });
+        });
     }
 
     const content = `
@@ -728,6 +742,13 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                         <p>Move the button bar to the default position at the top center of the screen.</p>
                     </div>
                     <button type="button" class="stp-reset-position-btn">Reset Position</button>
+                </div>
+                <div class="stp-reset-item">
+                    <div>
+                        <strong>Clear All Templates</strong>
+                        <p>Remove every template from the bar.</p>
+                    </div>
+                    <button type="button" class="stp-clear-templates-btn">Clear Templates</button>
                 </div>
             </div>
         </div>
@@ -830,6 +851,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             }
         }
         if (pendingResetPosition) bar.css(originalPosition);
+        if (pendingClearTemplates) renderCustomButtons(bar);
         if (barHidden) bar.hide();
         else           bar.show();
     }
