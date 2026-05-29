@@ -3,6 +3,7 @@
   "title": "Star Template Bar",
   "description": "Manage placed templates on the game map with a draggable template bar.",
   "version": "1.0.0",
+  "license": "MIT",
   "authors": [
     {
       "name": "StarDragon"
