@@ -63,7 +63,9 @@
     "Extra": {
       "HideBarTitle": "Ocultar a barra de botões",
       "HideBarDesc": "Ocultar a barra de botões da tela.",
-      "HideBarRestore": "Para restaurá-la, desmarque esta opção em Configurar Ajustes do Jogo."
+      "HideBarRestore": "Para restaurá-la, desmarque esta opção em Configurar Ajustes do Jogo.",
+      "GridSizeTitle": "Dimensionar novos modelos pela grade",
+      "GridSizeDesc": "Usar um quadrado da grade como tamanho mínimo para modelos recém-colocados. Os modelos existentes mantêm seu tamanho atual."
     },
     "Reset": {
       "PositionTitle": "Redefinir a posição da barra",

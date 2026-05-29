@@ -63,7 +63,9 @@
     "Extra": {
       "HideBarTitle": "Schaltflächenleiste ausblenden",
       "HideBarDesc": "Die Schaltflächenleiste vom Bildschirm ausblenden.",
-      "HideBarRestore": "Um sie wiederherzustellen, deaktiviere diese Option unter Spieleinstellungen konfigurieren."
+      "HideBarRestore": "Um sie wiederherzustellen, deaktiviere diese Option unter Spieleinstellungen konfigurieren.",
+      "GridSizeTitle": "Neue Schablonen an das Raster anpassen",
+      "GridSizeDesc": "Ein Rasterfeld als Mindestgröße für neu platzierte Schablonen verwenden. Bestehende Schablonen behalten ihre aktuelle Größe."
     },
     "Reset": {
       "PositionTitle": "Leistenposition zurücksetzen",

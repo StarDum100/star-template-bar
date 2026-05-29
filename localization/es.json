@@ -63,7 +63,9 @@
     "Extra": {
       "HideBarTitle": "Ocultar la barra de botones",
       "HideBarDesc": "Ocultar la barra de botones de la pantalla.",
-      "HideBarRestore": "Para restaurarla, desmarca esta opción en Configurar ajustes del juego."
+      "HideBarRestore": "Para restaurarla, desmarca esta opción en Configurar ajustes del juego.",
+      "GridSizeTitle": "Ajustar las nuevas plantillas a la cuadrícula",
+      "GridSizeDesc": "Usar una casilla de la cuadrícula como tamaño mínimo de las plantillas recién colocadas. Las plantillas existentes conservan su tamaño actual."
     },
     "Reset": {
       "PositionTitle": "Restablecer la posición de la barra",

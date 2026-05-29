@@ -63,7 +63,9 @@
     "Extra": {
       "HideBarTitle": "Masquer la barre de boutons",
       "HideBarDesc": "Masquer la barre de boutons de l'écran.",
-      "HideBarRestore": "Pour la restaurer, décochez cette option dans Configurer les paramètres du jeu."
+      "HideBarRestore": "Pour la restaurer, décochez cette option dans Configurer les paramètres du jeu.",
+      "GridSizeTitle": "Dimensionner les nouveaux gabarits sur la grille",
+      "GridSizeDesc": "Utiliser une case de la grille comme taille minimale des gabarits nouvellement placés. Les gabarits existants conservent leur taille actuelle."
     },
     "Reset": {
       "PositionTitle": "Réinitialiser la position de la barre",

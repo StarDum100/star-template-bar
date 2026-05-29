@@ -63,7 +63,9 @@
     "Extra": {
       "HideBarTitle": "Hide Button Bar",
       "HideBarDesc": "Hide the button bar from the screen.",
-      "HideBarRestore": "To restore it, uncheck this option in Configure Game Settings."
+      "HideBarRestore": "To restore it, uncheck this option in Configure Game Settings.",
+      "GridSizeTitle": "Size new templates to the grid",
+      "GridSizeDesc": "Use one grid square as the minimum size for newly placed templates. Existing templates keep their current size."
     },
     "Reset": {
       "PositionTitle": "Reset Bar Position",

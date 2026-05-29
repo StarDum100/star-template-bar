@@ -42,6 +42,16 @@ const TEMPLATE_TYPES = ["circle", "cone", "ray", "rect"];
 // moduleDimsFromFlags, and mirrored as the `min` attribute on the size inputs.
 const MIN_TEMPLATE_SIZE = 1;
 
+// Minimum size applied to a newly created template. When the "grid-derived size" setting is on,
+// that's one grid square (the scene's grid.distance); otherwise the fixed MIN_TEMPLATE_SIZE.
+// Only used at creation time, so existing templates keep whatever size they already have.
+function minTemplateSize() {
+    if (game.settings.get(MODULE_ID, "gridDerivedSize")) {
+        return canvas?.scene?.grid?.distance || MIN_TEMPLATE_SIZE;
+    }
+    return MIN_TEMPLATE_SIZE;
+}
+
 function gridDist()       { return (canvas?.scene?.grid?.size ?? 100) / 20; }
 function gridWidthScale() { return (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance || 1); }
 
@@ -100,11 +110,12 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     }
 
     const effectiveDistance = (t === "rect") ? (height ?? width) * Math.SQRT2 : distance;
+    const minSize = minTemplateSize();
     const templateData = {
         t,
-        distance:    Math.max(MIN_TEMPLATE_SIZE, effectiveDistance),
+        distance:    Math.max(minSize, effectiveDistance),
         angle:       angle ?? 53.13,
-        width:       Math.max(MIN_TEMPLATE_SIZE, width ?? distance),
+        width:       Math.max(minSize, width ?? distance),
         direction:   t === "rect" ? 45 : 0,
         fillColor,
         borderColor: fillColor,
@@ -446,6 +457,10 @@ function reshapeGrid(pendingGrid, numRows, flat = pendingGrid.flat()) {
 
 function buildTemplateFormHtml(prefix, color) {
     const p = `stb-${prefix}`;
+    // One "size unit" for default dimensions: 1ft, or one grid square when the grid-derived
+    // size setting is on. The fields start at this unit (the initial circle defaults to a
+    // 1-unit radius); wireTypeToggle applies per-shape defaults on change (rect 1x1, ray 1x5).
+    const defaultSize = minTemplateSize();
     const typeOptions = TEMPLATE_TYPES.map(type =>
         `<option value="${type}">${escapeHtml(translate(`Shape.${type}`))}</option>`
     ).join("");
@@ -456,7 +471,7 @@ function buildTemplateFormHtml(prefix, color) {
         </div>
         <div class="stb-form-row ${p}distance-row">
             <label>${translate("Form.Size")}</label>
-            <input type="number" class="${p}distance" value="20" min="${MIN_TEMPLATE_SIZE}" step="1">
+            <input type="number" class="${p}distance" value="${defaultSize}" min="${MIN_TEMPLATE_SIZE}" step="1">
         </div>
         <div class="stb-form-row ${p}cone-row" style="display:none">
             <label>${translate("Form.Angle")}</label>
@@ -464,11 +479,11 @@ function buildTemplateFormHtml(prefix, color) {
         </div>
         <div class="stb-form-row ${p}width-row" style="display:none">
             <label>${translate("Form.Width")}</label>
-            <input type="number" class="${p}width" value="5" min="${MIN_TEMPLATE_SIZE}" step="1">
+            <input type="number" class="${p}width" value="${defaultSize}" min="${MIN_TEMPLATE_SIZE}" step="1">
         </div>
         <div class="stb-form-row ${p}height-row" style="display:none">
             <label>${translate("Form.Height")}</label>
-            <input type="number" class="${p}height" value="20" min="${MIN_TEMPLATE_SIZE}" step="1">
+            <input type="number" class="${p}height" value="${defaultSize}" min="${MIN_TEMPLATE_SIZE}" step="1">
         </div>
         <div class="stb-form-row">
             <label>${translate("Form.Color")}</label>
@@ -485,6 +500,14 @@ function wireTypeToggle($html, prefix) {
         $html.find(`.${p}width-row`).toggle(type === "rect" || type === "ray");
         $html.find(`.${p}height-row`).toggle(type === "rect");
         $html.find(`.${p}distance-row`).toggle(type !== "rect");
+
+        // Reset the size fields to this shape's defaults, in units of the current minimum size
+        // (1ft, or one grid square when grid-derived sizing is on): circle/cone radius = 1 unit,
+        // rect = 1x1 units, ray = 1 unit wide x 5 units long.
+        const unit = minTemplateSize();
+        $html.find(`.${p}distance`).val(type === "ray" ? unit * 5 : unit);
+        $html.find(`.${p}width`).val(unit);
+        $html.find(`.${p}height`).val(unit);
     });
 }
 
@@ -548,7 +571,7 @@ function renderTemplatesBody(pendingCustom) {
 
 // Assembles the full config-dialog inner HTML (the five tabs and their panels). `initialTab`
 // decides which tab/panel starts active; the Layout and Move panels are populated on demand.
-function buildConfigContent(pendingCustom, barHidden, initialTab) {
+function buildConfigContent(pendingCustom, barHidden, gridDerivedSize, initialTab) {
     const tab   = (name) => `stb-tab${name === initialTab ? " stb-tab-active" : ""}`;
     const panel = (name) => `stb-tab-panel${name === initialTab ? "" : " stb-tab-panel-hidden"}`;
 
@@ -590,6 +613,13 @@ function buildConfigContent(pendingCustom, barHidden, initialTab) {
                         <strong>${translate("Extra.HideBarTitle")}</strong>
                         <p>${translate("Extra.HideBarDesc")}</p>
                         <p>${translate("Extra.HideBarRestore")}</p>
+                    </div>
+                </label>
+                <label class="stb-extra-item">
+                    <input type="checkbox" class="stb-grid-size-checkbox"${gridDerivedSize ? " checked" : ""}>
+                    <div>
+                        <strong>${translate("Extra.GridSizeTitle")}</strong>
+                        <p>${translate("Extra.GridSizeDesc")}</p>
                     </div>
                 </label>
             </div>
@@ -658,7 +688,8 @@ async function rollbackCanceledChanges(pendingRemovalOriginals, pendingMoveOrigi
 }
 
 async function openConfig(bar, initialTab = "templates", resumeState = null) {
-    const barHidden     = game.settings.get(MODULE_ID, "barHidden");
+    const barHidden       = game.settings.get(MODULE_ID, "barHidden");
+    const gridDerivedSize = game.settings.get(MODULE_ID, "gridDerivedSize");
     const pendingCustom = resumeState?.pendingCustom ?? [...getCustomTemplates()];
     const pendingGrid   = resumeState?.pendingGrid   ?? getBarGrid(pendingCustom).map(row => [...row]);
 
@@ -843,7 +874,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         });
     }
 
-    const content = buildConfigContent(pendingCustom, barHidden, initialTab);
+    const content = buildConfigContent(pendingCustom, barHidden, gridDerivedSize, initialTab);
 
     await foundry.applications.api.DialogV2.wait({
         window:      { title: translate("Dialog.Title", { title: MODULE_TITLE }) },
@@ -864,6 +895,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     }
                     const newBarHidden = $html.find(".stb-hide-bar-checkbox").prop("checked");
                     await game.settings.set(MODULE_ID, "barHidden", newBarHidden);
+                    await game.settings.set(MODULE_ID, "gridDerivedSize", $html.find(".stb-grid-size-checkbox").prop("checked"));
                     if (newBarHidden) bar.hide();
                     else             bar.show();
                     renderCustomButtons(bar, { customTemplates: pendingCustom, grid: pendingGrid });
@@ -934,6 +966,14 @@ Hooks.once("init", () => {
             else       $(".stb-template-bar").show();
         },
     });
+    // Client toggle (set from the config dialog's Extra tab) for whether newly created templates
+    // use one grid square as their minimum size. Not shown in Foundry's own settings menu.
+    game.settings.register(MODULE_ID, "gridDerivedSize", {
+        scope: "client",
+        config: false,
+        type: Boolean,
+        default: false,
+    });
 });
 
 Hooks.once("ready", () => {
@@ -980,6 +1020,6 @@ Hooks.once("ready", () => {
     });
 });
 
-if (typeof module !== "undefined") module.exports = { buildConfigContent, renderTemplatesBody, commitMove, rollbackCanceledChanges, hasModuleDims, moduleDimsFromFlags };
+if (typeof module !== "undefined") module.exports = { buildConfigContent, renderTemplatesBody, commitMove, rollbackCanceledChanges, hasModuleDims, moduleDimsFromFlags, minTemplateSize };
 })();
 

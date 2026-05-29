@@ -114,7 +114,7 @@ global.foundry.applications.api.DialogV2.wait = jest.fn().mockImplementation((op
     return new Promise(r => { resolveDialog = r; });
 });
 
-const { commitMove, rollbackCanceledChanges, hasModuleDims, moduleDimsFromFlags } = require("../scripts/main.js");
+const { commitMove, rollbackCanceledChanges, hasModuleDims, moduleDimsFromFlags, minTemplateSize } = require("../scripts/main.js");
 
 // Wrap window.addEventListener so tests can inspect pointerdown registrations
 // while still delegating to the real jsdom implementation.
@@ -163,10 +163,14 @@ async function triggerPlaceFromDialog(htmlModifier) {
 }
 
 function setupBar(flagOverrides = {}) {
-    const { barHidden, ...flagsOnly } = flagOverrides;
+    const { barHidden, gridDerivedSize, ...flagsOnly } = flagOverrides;
     global.game.user.isGM = false;
     global.game.user.getFlag.mockImplementation((ns, key) => flagsOnly[key] ?? undefined);
-    global.game.settings.get.mockImplementation((ns, key) => key === "barHidden" ? (barHidden ?? false) : false);
+    global.game.settings.get.mockImplementation((ns, key) => {
+        if (key === "barHidden")       return barHidden ?? false;
+        if (key === "gridDerivedSize") return gridDerivedSize ?? false;
+        return false;
+    });
     global.canvas.scene.grid = { size: 100, distance: 5 };
     global.canvas.scene.templates.contents = [];
     global.canvas.scene.templates.get = jest.fn(id =>
@@ -240,6 +244,16 @@ describe("Star Template Bar", () => {
                 "star-template-bar",
                 "barHidden",
                 expect.objectContaining({ scope: "client", config: true, type: Boolean, default: false })
+            );
+        });
+
+        it("registers the gridDerivedSize setting (client scope, default false, hidden from the settings menu)", () => {
+            global.game.settings.register.mockClear();
+            hookCallbacks["init"]();
+            expect(global.game.settings.register).toHaveBeenCalledWith(
+                "star-template-bar",
+                "gridDerivedSize",
+                expect.objectContaining({ scope: "client", config: false, type: Boolean, default: false })
             );
         });
 
@@ -378,10 +392,51 @@ describe("Star Template Bar", () => {
             expect(options).toContain("rect");
         });
 
-        it("dialog has a distance input defaulting to 20", () => {
+        it("dialog has a distance input defaulting to 1 (the fixed minimum) when gridDerivedSize is off", () => {
             document.querySelector(".stb-place-btn").click();
             const { html } = openDialogHtml();
-            expect(html.find(".stb-distance").val()).toBe("20");
+            expect(html.find(".stb-distance").val()).toBe("1");
+        });
+
+        it("dialog distance input defaults to one grid square when gridDerivedSize is on", () => {
+            setupBar({ gridDerivedSize: true }); // scene grid.distance = 5
+            document.querySelector(".stb-place-btn").click();
+            const { html } = openDialogHtml();
+            expect(html.find(".stb-distance").val()).toBe("5");
+        });
+
+        it("ray defaults to 1 wide and 5 long when gridDerivedSize is off", () => {
+            document.querySelector(".stb-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stb-type").val("ray").trigger("change");
+            expect(html.find(".stb-width").val()).toBe("1");
+            expect(html.find(".stb-distance").val()).toBe("5");
+        });
+
+        it("rect defaults to 1 by 1 when gridDerivedSize is off", () => {
+            document.querySelector(".stb-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stb-type").val("rect").trigger("change");
+            expect(html.find(".stb-width").val()).toBe("1");
+            expect(html.find(".stb-height").val()).toBe("1");
+        });
+
+        it("ray defaults scale to grid squares when gridDerivedSize is on", () => {
+            setupBar({ gridDerivedSize: true }); // scene grid.distance = 5
+            document.querySelector(".stb-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stb-type").val("ray").trigger("change");
+            expect(html.find(".stb-width").val()).toBe("5");      // 1 square wide
+            expect(html.find(".stb-distance").val()).toBe("25");  // 5 squares long
+        });
+
+        it("rect defaults scale to grid squares when gridDerivedSize is on", () => {
+            setupBar({ gridDerivedSize: true });
+            document.querySelector(".stb-place-btn").click();
+            const { html } = openDialogHtml();
+            html.find(".stb-type").val("rect").trigger("change");
+            expect(html.find(".stb-width").val()).toBe("5");
+            expect(html.find(".stb-height").val()).toBe("5");
         });
 
         it("dialog has a color input", () => {
@@ -610,6 +665,24 @@ describe("Star Template Bar", () => {
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
                 [expect.objectContaining({ distance: 1 })]
+            );
+        });
+
+        it("uses one grid square as the minimum size when gridDerivedSize is on", async () => {
+            setupBar({ gridDerivedSize: true }); // scene grid.distance = 5 -> one square = 5ft
+            await triggerPlaceFromDialog(html => html.find(".stb-distance").val("3"));
+            expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                "MeasuredTemplate",
+                [expect.objectContaining({ distance: 5 })]
+            );
+        });
+
+        it("leaves new templates above one grid square unchanged when gridDerivedSize is on", async () => {
+            setupBar({ gridDerivedSize: true });
+            await triggerPlaceFromDialog(html => html.find(".stb-distance").val("30"));
+            expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
+                "MeasuredTemplate",
+                [expect.objectContaining({ distance: 30 })]
             );
         });
 
@@ -2222,6 +2295,42 @@ describe("Star Template Bar", () => {
                     "star-template-bar", "barHidden", false
                 );
             });
+
+            it("grid-size checkbox is unchecked when gridDerivedSize is not set", () => {
+                const html = openExtra();
+                expect(html.find(".stb-grid-size-checkbox").prop("checked")).toBe(false);
+            });
+
+            it("grid-size checkbox is checked when gridDerivedSize is true", () => {
+                const html = openExtra({ gridDerivedSize: true });
+                expect(html.find(".stb-grid-size-checkbox").prop("checked")).toBe(true);
+            });
+
+            it("Save persists gridDerivedSize as true when the grid-size checkbox is checked", async () => {
+                const html = openExtra();
+                html.find(".stb-grid-size-checkbox").prop("checked", true);
+                global.game.settings.set.mockClear();
+                const options = global.foundry.applications.api.DialogV2.__lastOptions;
+                const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+                const saveBtn = options.buttons.find(b => b.action === "save");
+                await saveBtn.callback(null, null, { element: container });
+                expect(global.game.settings.set).toHaveBeenCalledWith(
+                    "star-template-bar", "gridDerivedSize", true
+                );
+            });
+
+            it("Save persists gridDerivedSize as false when the grid-size checkbox is unchecked", async () => {
+                const html = openExtra({ gridDerivedSize: true });
+                html.find(".stb-grid-size-checkbox").prop("checked", false);
+                global.game.settings.set.mockClear();
+                const options = global.foundry.applications.api.DialogV2.__lastOptions;
+                const container = global.foundry.applications.api.DialogV2.__lastInstance.element;
+                const saveBtn = options.buttons.find(b => b.action === "save");
+                await saveBtn.callback(null, null, { element: container });
+                expect(global.game.settings.set).toHaveBeenCalledWith(
+                    "star-template-bar", "gridDerivedSize", false
+                );
+            });
         });
 
         describe("reset tab", () => {
@@ -2545,6 +2654,28 @@ describe("template dimension helpers", () => {
 
         it("defaults a missing distance flag to 20 for non-rect shapes", () => {
             expect(moduleDimsFromFlags({ angle: 90 }, "cone")).toEqual({ distance: 20, width: 20 });
+        });
+    });
+
+    describe("minTemplateSize", () => {
+        afterEach(() => { global.game.settings.get.mockReturnValue(false); });
+
+        it("returns the fixed minimum (1) when gridDerivedSize is off", () => {
+            global.game.settings.get.mockImplementation(() => false);
+            global.canvas.scene.grid = { size: 100, distance: 5 };
+            expect(minTemplateSize()).toBe(1);
+        });
+
+        it("returns one grid square (grid.distance) when gridDerivedSize is on", () => {
+            global.game.settings.get.mockImplementation((ns, key) => key === "gridDerivedSize");
+            global.canvas.scene.grid = { size: 100, distance: 10 };
+            expect(minTemplateSize()).toBe(10);
+        });
+
+        it("falls back to the fixed minimum when the scene grid distance is unavailable", () => {
+            global.game.settings.get.mockImplementation((ns, key) => key === "gridDerivedSize");
+            global.canvas.scene.grid = { size: 100, distance: 0 };
+            expect(minTemplateSize()).toBe(1);
         });
     });
 });

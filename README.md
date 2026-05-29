@@ -11,6 +11,7 @@ A FoundryVTT module that adds a draggable template bar to the UI, letting you pl
 - **Layout editor** — drag-and-drop grid for reordering bar buttons with a configurable row count
 - **Draggable bar** — drag the handle to reposition the bar anywhere on screen; position is saved per user
 - **Hide bar** — option to hide the bar entirely; restore it via Configure Game Settings
+- **Grid-derived sizing** — optional Extra-tab toggle (off by default) to size newly placed templates to at least one grid square; existing templates keep their size
 - **All changes are deferred** — adding/removing custom templates, moving/deleting placed templates, and resetting bar position only take effect when you click Save
 - **Localized** — available in English, French, German, Spanish, and Brazilian Portuguese, following Foundry's selected language
 

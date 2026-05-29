@@ -23,13 +23,15 @@ All logic lives in `scripts/main.js`, wrapped in an IIFE. The IIFE is required b
 State is stored in two places:
 
 - **`game.user` flags** (`MODULE_ID` namespace): `customTemplates` (array of template objects), `barGrid` (array of string arrays — the button layout grid), `barPosition` ({left, top})
-- **Game setting** (`barHidden`, scope `client`): whether the bar is hidden; toggled via Configure Game Settings or the Extra tab
+- **Game settings** (scope `client`): `barHidden` (`config: true`) — whether the bar is hidden, toggled via Configure Game Settings or the Extra tab; `gridDerivedSize` (`config: false`, default false) — when on, newly created templates use one grid square as their minimum size, toggled only from the Extra tab. Both are persisted on the dialog's Save.
 
 ### Template placement flow
 
 `placeTemplate()` / `pickNewPosition()` add a preview `MeasuredTemplate` object to `canvas.templates.preview`, then register `pointermove` (snap + refresh), `pointerdown` (commit), and `keydown Escape` (cancel) listeners on `window`. On commit, the preview is destroyed and `canvas.scene.createEmbeddedDocuments` writes the real template.
 
 The `gridDist()` and `gridWidthScale()` helpers translate between Foundry's internal distance units and display feet. Non-module templates (placed outside this module) need different scaling applied via `templateToCreateData()`.
+
+`minTemplateSize()` returns the floor applied to a newly created template in `placeTemplate()`: `MIN_TEMPLATE_SIZE` (1) normally, or one grid square (`canvas.scene.grid.distance`) when the `gridDerivedSize` setting is on (falling back to `MIN_TEMPLATE_SIZE` on a gridless scene). It also defines the "size unit" for the form's default dimensions: `buildTemplateFormHtml()` seeds the fields at one unit, and `wireTypeToggle()` resets them to the selected shape's defaults on every type change — circle/cone radius = 1 unit, rect = 1×1 units, ray = 1 unit wide × 5 units long (with the unit being 1ft, or one grid square when the toggle is on). It's only consulted at creation time, so existing templates keep their measurements when the toggle changes. The fixed `MIN_TEMPLATE_SIZE` floor still backs `readTemplateForm()` and `moduleDimsFromFlags()`.
 
 `pickNewPosition()` (move preview) and `templateToCreateData()` (persisted create-data) share two pure, exported helpers for the module-flagged case: `hasModuleDims(f)` (the "does this template carry our dimension flags" guard) and `moduleDimsFromFlags(f, t)` (the `{ distance, width }` derivation — rect distance is the height×√2 diagonal). Each caller layers on its own `angle`/`direction` and non-module handling, which intentionally differ between the preview and create-data paths, so only the identical guard + dimension math is shared.
 
