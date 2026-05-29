@@ -25,7 +25,10 @@ A FoundryVTT module that adds a draggable template bar to the UI, letting you pl
 ## Installation
 
 1. In Foundry, open **Add-on Modules** and click **Install Module**.
-2. Paste the manifest URL into the field at the bottom and click **Install**.
+2. Paste this manifest URL into the field at the bottom and click **Install**:
+   ```
+   https://github.com/StarDum100/star-template-bar/releases/latest/download/module.json
+   ```
 3. Enable the module in your world under **Manage Modules**.
 
 ## Examples
@@ -104,6 +107,37 @@ The suite uses [Jest](https://jestjs.io/) with a jsdom environment to test the m
 - **Extra/Reset tabs** — hide-bar checkbox live preview; reset position live preview with revert on Cancel; Clear All Templates
 - **XSS safety** — user-supplied names, owner names, and template IDs are HTML-escaped before rendering
 - **Manifest validation** — `module.json` is well-formed, version strings are valid, and all referenced files exist on disk
+
+### Cutting a release
+
+Releases are automated by the [`Release` workflow](.github/workflows/release.yml), which runs when you push a version tag. On a `v*` tag it verifies the tag matches the `version` in `module.json` (failing the release if they differ), rewrites the `manifest` and `download` URLs, zips the runtime files into `module.zip`, and publishes a GitHub release with `module.json` and `module.zip` attached — which the `manifest` URL resolves to.
+
+To publish a new version:
+
+1. Bump `version` in `module.json` (and `compatibility.verified` if you tested against a newer Foundry build).
+2. Commit and push the change:
+   ```bash
+   git commit -am "Release 1.0.1"
+   git push
+   ```
+3. Tag the **matching** version and push the tag (this triggers the release):
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+
+## Localization
+
+All user-facing text is loaded from JSON language files in [`localization/`](localization/) under the `STARTEMPLATEBAR` namespace and registered through the `languages` array in `module.json`. English (`localization/en.json`) is the source of truth. The module ships with English (`en`), French (`fr`), German (`de`), Spanish (`es`), and Brazilian Portuguese (`pt-BR`); Foundry serves each user the file matching their client language and falls back to English for any missing key.
+
+To add a translation:
+
+1. Copy `localization/en.json` to `localization/<lang>.json` (e.g. `de.json`, `fr.json`) and translate the values, leaving the keys and any `{placeholders}` unchanged.
+2. Add an entry to the `languages` array in `module.json`:
+   ```json
+   { "lang": "de", "name": "Deutsch", "path": "localization/de.json" }
+   ```
+3. Run `npm test` — the localization tests verify the new file has full key and placeholder parity with English.
 
 ### Verifying compatibility with a new Foundry version
 

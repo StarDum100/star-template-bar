@@ -1,0 +1,49 @@
+name: Release
+
+# Cut a release by pushing a version tag, e.g.:
+#   git tag v1.0.0 && git push origin v1.0.0
+# This stamps the tag's version into module.json, zips the runtime files, and publishes
+# a GitHub release with module.json + module.zip attached (which the manifest/download
+# URLs in module.json point at).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches module.json version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          module_version="$(jq -r '.version' module.json)"
+          if [ "$tag_version" != "$module_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} (version $tag_version) does not match module.json version $module_version. Bump module.json's version and tag the matching version."
+            exit 1
+          fi
+
+      - name: Stamp manifest and download URLs into module.json
+        run: |
+          manifest="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/module.json"
+          download="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/module.zip"
+          tmp="$(mktemp)"
+          jq --arg m "$manifest" --arg d "$download" \
+            '.manifest = $m | .download = $d' module.json > "$tmp"
+          mv "$tmp" module.json
+          echo "----- released module.json -----"
+          cat module.json
+
+      - name: Build module.zip (runtime files only)
+        run: zip -r module.zip module.json scripts styles localization LICENSE README.md
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" module.json module.zip --title "${GITHUB_REF_NAME}" --generate-notes
