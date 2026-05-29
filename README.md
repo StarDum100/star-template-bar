@@ -17,10 +17,9 @@ A FoundryVTT module that adds a draggable template bar to the UI, letting you pl
 
 ## Compatibility
 
-| Foundry Version | Status |
+| Module Version | Foundry Version |
 |---|---|
-| v14 | Minimum |
-| v14 | Verified |
+| 1.0.0 | v14 |
 
 ## Installation
 
