@@ -605,11 +605,11 @@ describe("Star Template Bar", () => {
             );
         });
 
-        it("clamps distance to minimum 5", async () => {
+        it("clamps distance to minimum 1", async () => {
             await triggerPlaceFromDialog(html => html.find(".stb-distance").val("-10"));
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                 "MeasuredTemplate",
-                [expect.objectContaining({ distance: 5 })]
+                [expect.objectContaining({ distance: 1 })]
             );
         });
 
@@ -1286,13 +1286,14 @@ describe("Star Template Bar", () => {
                 );
             });
 
-            it("_nonModule flag prevents module path from clamping width to 5ft minimum", async () => {
+            it("_nonModule flag prevents module path from clamping width to the minimum", async () => {
                 global.canvas.mousePosition = { x: 300, y: 250 };
-                // Template already has _nonModule flag with width=2 (less than 5ft minimum).
-                // The non-module path must be taken so width=2 is preserved.
+                // The _nonModule flag must route to the non-module path, which preserves a width
+                // below MIN_TEMPLATE_SIZE (1ft). If the module path were wrongly taken it would
+                // clamp to 1 (Math.max(1, flag width 2)); the non-module path yields 10/20 = 0.5.
                 const tpl = makeTemplate("t1", "user-001", "ray", 500);
                 tpl.toObject.mockReturnValue({
-                    t: "ray", distance: 500, width: 40, direction: 0,
+                    t: "ray", distance: 500, width: 10, direction: 0,
                     x: 100, y: 100, fillColor: "#ff4400", borderColor: "#ff4400",
                     flags: { "star-template-bar": { distance: 100, width: 2, _nonModule: true } },
                 });
@@ -1302,10 +1303,10 @@ describe("Star Template Bar", () => {
                 await flushAsync();
                 await simulateCanvasClick();
                 await flushAsync();
-                // width=40 stored -> 40/20=2ft passed (not clamped to 5)
+                // width=10 stored -> 10/20=0.5ft passed (below the 1ft minimum, not clamped)
                 expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledWith(
                     "MeasuredTemplate",
-                    [expect.objectContaining({ width: 2 })]
+                    [expect.objectContaining({ width: 0.5 })]
                 );
             });
 
@@ -2520,8 +2521,8 @@ describe("template dimension helpers", () => {
             expect(moduleDimsFromFlags({ distance: 20 }, "circle")).toEqual({ distance: 20, width: 20 });
         });
 
-        it("floors distance and width at 5 for non-rect shapes", () => {
-            expect(moduleDimsFromFlags({ distance: 3 }, "cone")).toEqual({ distance: 5, width: 5 });
+        it("floors distance and width at 1 for non-rect shapes", () => {
+            expect(moduleDimsFromFlags({ distance: 0.5 }, "cone")).toEqual({ distance: 1, width: 1 });
         });
 
         it("uses the width flag independently of distance for rays", () => {

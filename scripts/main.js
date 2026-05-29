@@ -37,6 +37,11 @@ function cssColor(value, fallback = "#000000") {
 
 const TEMPLATE_TYPES = ["circle", "cone", "ray", "rect"];
 
+// Smallest template dimension (in display feet) the bar will create. This is the module's own
+// floor, not a Foundry limit; it is enforced in placeTemplate, readTemplateForm, and
+// moduleDimsFromFlags, and mirrored as the `min` attribute on the size inputs.
+const MIN_TEMPLATE_SIZE = 1;
+
 function gridDist()       { return (canvas?.scene?.grid?.size ?? 100) / 20; }
 function gridWidthScale() { return (canvas?.scene?.grid?.size ?? 100) / (canvas?.scene?.grid?.distance || 1); }
 
@@ -97,9 +102,9 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     const effectiveDistance = (t === "rect") ? (height ?? width) * Math.SQRT2 : distance;
     const templateData = {
         t,
-        distance:    Math.max(5, effectiveDistance),
+        distance:    Math.max(MIN_TEMPLATE_SIZE, effectiveDistance),
         angle:       angle ?? 53.13,
-        width:       Math.max(5, width ?? distance),
+        width:       Math.max(MIN_TEMPLATE_SIZE, width ?? distance),
         direction:   t === "rect" ? 45 : 0,
         fillColor,
         borderColor: fillColor,
@@ -141,15 +146,16 @@ function hasModuleDims(f) {
 
 // Distance/width for a template that carries module flags. For a rect, `distance` is the
 // diagonal of its width x height box (height falls back to width); other shapes use the stored
-// distance floored at 5. Width is always floored at 5 (Foundry's minimum template size).
+// distance floored at MIN_TEMPLATE_SIZE. Width is always floored at MIN_TEMPLATE_SIZE (the
+// module's own minimum, not a Foundry limit).
 // Callers layer on their own `angle`/`direction` (which differ between preview and create-data).
 function moduleDimsFromFlags(f, t) {
     const fd = f.distance ?? 20;
     const fw = f.width    ?? fd;
     const fh = f.height;
     return {
-        distance: t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd),
-        width:    Math.max(5, fw ?? fd),
+        distance: t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(MIN_TEMPLATE_SIZE, fd),
+        width:    Math.max(MIN_TEMPLATE_SIZE, fw ?? fd),
     };
 }
 
@@ -450,7 +456,7 @@ function buildTemplateFormHtml(prefix, color) {
         </div>
         <div class="stb-form-row ${p}distance-row">
             <label>${translate("Form.Size")}</label>
-            <input type="number" class="${p}distance" value="20" min="5" step="5">
+            <input type="number" class="${p}distance" value="20" min="${MIN_TEMPLATE_SIZE}" step="1">
         </div>
         <div class="stb-form-row ${p}cone-row" style="display:none">
             <label>${translate("Form.Angle")}</label>
@@ -458,11 +464,11 @@ function buildTemplateFormHtml(prefix, color) {
         </div>
         <div class="stb-form-row ${p}width-row" style="display:none">
             <label>${translate("Form.Width")}</label>
-            <input type="number" class="${p}width" value="5" min="5" step="5">
+            <input type="number" class="${p}width" value="5" min="${MIN_TEMPLATE_SIZE}" step="1">
         </div>
         <div class="stb-form-row ${p}height-row" style="display:none">
             <label>${translate("Form.Height")}</label>
-            <input type="number" class="${p}height" value="20" min="5" step="5">
+            <input type="number" class="${p}height" value="20" min="${MIN_TEMPLATE_SIZE}" step="1">
         </div>
         <div class="stb-form-row">
             <label>${translate("Form.Color")}</label>
@@ -486,10 +492,10 @@ function readTemplateForm($html, prefix) {
     const p = `stb-${prefix}`;
     return {
         t:         $html.find(`.${p}type`).val(),
-        distance:  Math.max(5, parseFloat($html.find(`.${p}distance`).val()) || 20),
+        distance:  Math.max(MIN_TEMPLATE_SIZE, parseFloat($html.find(`.${p}distance`).val()) || 20),
         angle:     parseFloat($html.find(`.${p}angle`).val()) || 53.13,
-        width:     Math.max(5, parseFloat($html.find(`.${p}width`).val()) || 5),
-        height:    Math.max(5, parseFloat($html.find(`.${p}height`).val()) || 20),
+        width:     Math.max(MIN_TEMPLATE_SIZE, parseFloat($html.find(`.${p}width`).val()) || 5),
+        height:    Math.max(MIN_TEMPLATE_SIZE, parseFloat($html.find(`.${p}height`).val()) || 20),
         fillColor: $html.find(`.${p}color`).val(),
     };
 }
