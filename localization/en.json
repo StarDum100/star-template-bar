@@ -1,0 +1,94 @@
+{
+  "STARTEMPLATEBAR": {
+    "Bar": {
+      "DragHandleTitle": "Drag to move bar",
+      "PlaceButton": "Place",
+      "PlaceButtonTitle": "Place a template on the map",
+      "MoveButton": "Move",
+      "MoveButtonTitle": "Move or remove placed templates",
+      "ConfigButtonTitle": "Configure templates"
+    },
+    "Shape": {
+      "circle": "Circle",
+      "cone": "Cone",
+      "ray": "Ray",
+      "rect": "Rect"
+    },
+    "Form": {
+      "Name": "Name",
+      "NamePlaceholder": "e.g. Fireball",
+      "Shape": "Shape",
+      "Size": "Size (ft)",
+      "Angle": "Angle (&deg;)",
+      "Width": "Width (ft)",
+      "Height": "Height (ft)",
+      "Color": "Color"
+    },
+    "Place": {
+      "DialogTitle": "Place Template",
+      "PlaceButton": "Place",
+      "Cancel": "Cancel"
+    },
+    "Tab": {
+      "Templates": "Templates",
+      "Move": "Move",
+      "Layout": "Layout",
+      "Reset": "Reset",
+      "Extra": "Extra"
+    },
+    "Table": {
+      "Name": "Name",
+      "Owner": "Owner",
+      "Shape": "Shape",
+      "Size": "Size",
+      "Width": "Width",
+      "Angle": "Angle",
+      "Color": "Color"
+    },
+    "Templates": {
+      "Empty": "No custom templates saved.",
+      "AddButton": "Add Template"
+    },
+    "Move": {
+      "Empty": "No templates on the map.",
+      "MoveTitle": "Pick up and move this template",
+      "RemoveTitle": "Delete this template",
+      "UnknownOwner": "Unknown"
+    },
+    "Layout": {
+      "Empty": "No custom templates configured. Add templates on the Templates tab.",
+      "Hint": "Drag any template to a slot to reorder &middot; Change the row count to reorganize the grid",
+      "NumberOfRows": "Number of Rows: "
+    },
+    "Extra": {
+      "HideBarTitle": "Hide Button Bar",
+      "HideBarDesc": "Hide the button bar from the screen.",
+      "HideBarRestore": "To restore it, uncheck this option in Configure Game Settings."
+    },
+    "Reset": {
+      "PositionTitle": "Reset Bar Position",
+      "PositionDesc": "Move the button bar to the default position at the top center of the screen.",
+      "PositionButton": "Reset Position",
+      "ClearTitle": "Clear All Templates",
+      "ClearDesc": "Remove every template from the bar.",
+      "ClearButton": "Clear Templates"
+    },
+    "Dialog": {
+      "Title": "{title} -- Configure (save to persist changes)",
+      "Save": "Save",
+      "Cancel": "Cancel"
+    },
+    "Notify": {
+      "NoActiveScene": "No active scene.",
+      "NoTemplatesToMove": "No templates to move.",
+      "NameRequired": "Template name is required.",
+      "NameExists": "A template named \"{name}\" already exists."
+    },
+    "Settings": {
+      "HideBar": {
+        "Name": "Hide Button Bar",
+        "Hint": "Remove the button bar from the screen. Toggle this setting to bring it back."
+      }
+    }
+  }
+}

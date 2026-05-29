@@ -1,0 +1,94 @@
+{
+  "STARTEMPLATEBAR": {
+    "Bar": {
+      "DragHandleTitle": "Arraste para mover a barra",
+      "PlaceButton": "Colocar",
+      "PlaceButtonTitle": "Colocar um modelo no mapa",
+      "MoveButton": "Mover",
+      "MoveButtonTitle": "Mover ou remover modelos colocados",
+      "ConfigButtonTitle": "Configurar modelos"
+    },
+    "Shape": {
+      "circle": "Círculo",
+      "cone": "Cone",
+      "ray": "Raio",
+      "rect": "Retângulo"
+    },
+    "Form": {
+      "Name": "Nome",
+      "NamePlaceholder": "ex. Bola de fogo",
+      "Shape": "Forma",
+      "Size": "Tamanho (ft)",
+      "Angle": "Ângulo (&deg;)",
+      "Width": "Largura (ft)",
+      "Height": "Altura (ft)",
+      "Color": "Cor"
+    },
+    "Place": {
+      "DialogTitle": "Colocar modelo",
+      "PlaceButton": "Colocar",
+      "Cancel": "Cancelar"
+    },
+    "Tab": {
+      "Templates": "Modelos",
+      "Move": "Mover",
+      "Layout": "Layout",
+      "Reset": "Redefinir",
+      "Extra": "Extra"
+    },
+    "Table": {
+      "Name": "Nome",
+      "Owner": "Dono",
+      "Shape": "Forma",
+      "Size": "Tamanho",
+      "Width": "Largura",
+      "Angle": "Ângulo",
+      "Color": "Cor"
+    },
+    "Templates": {
+      "Empty": "Nenhum modelo personalizado salvo.",
+      "AddButton": "Adicionar modelo"
+    },
+    "Move": {
+      "Empty": "Nenhum modelo no mapa.",
+      "MoveTitle": "Pegar e mover este modelo",
+      "RemoveTitle": "Excluir este modelo",
+      "UnknownOwner": "Desconhecido"
+    },
+    "Layout": {
+      "Empty": "Nenhum modelo personalizado configurado. Adicione modelos na aba Modelos.",
+      "Hint": "Arraste um modelo para um espaço para reordenar &middot; Altere o número de linhas para reorganizar a grade",
+      "NumberOfRows": "Número de linhas: "
+    },
+    "Extra": {
+      "HideBarTitle": "Ocultar a barra de botões",
+      "HideBarDesc": "Ocultar a barra de botões da tela.",
+      "HideBarRestore": "Para restaurá-la, desmarque esta opção em Configurar Ajustes do Jogo."
+    },
+    "Reset": {
+      "PositionTitle": "Redefinir a posição da barra",
+      "PositionDesc": "Mover a barra de botões para a posição padrão, no topo central da tela.",
+      "PositionButton": "Redefinir posição",
+      "ClearTitle": "Limpar todos os modelos",
+      "ClearDesc": "Remover todos os modelos da barra.",
+      "ClearButton": "Limpar modelos"
+    },
+    "Dialog": {
+      "Title": "{title} -- Configurar (salve para manter as alterações)",
+      "Save": "Salvar",
+      "Cancel": "Cancelar"
+    },
+    "Notify": {
+      "NoActiveScene": "Nenhuma cena ativa.",
+      "NoTemplatesToMove": "Nenhum modelo para mover.",
+      "NameRequired": "O nome do modelo é obrigatório.",
+      "NameExists": "Um modelo chamado \"{name}\" já existe."
+    },
+    "Settings": {
+      "HideBar": {
+        "Name": "Ocultar a barra de botões",
+        "Hint": "Remover a barra de botões da tela. Alterne esta configuração para trazê-la de volta."
+      }
+    }
+  }
+}

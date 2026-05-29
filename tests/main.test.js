@@ -1,5 +1,13 @@
 ﻿const $ = require("jquery");
 
+// Load the real English translations so assertions can check actual UI text rather than raw
+// keys. The mock resolves dotted keys and interpolates {placeholders} via the same
+// localize/format contract Foundry uses, mirroring the in-module translate() helper.
+const EN = require("../localization/en.json");
+function lookupTranslation(key) {
+    return key.split(".").reduce((obj, part) => (obj == null ? undefined : obj[part]), EN);
+}
+
 const hookCallbacks = {};
 
 global.$ = $;
@@ -24,6 +32,17 @@ global.game = {
         register: jest.fn(),
         get:      jest.fn().mockReturnValue(false),
         set:      jest.fn().mockResolvedValue(undefined),
+    },
+    i18n: {
+        localize: (key) => {
+            const value = lookupTranslation(key);
+            return typeof value === "string" ? value : key;
+        },
+        format: (key, data = {}) => {
+            const value = lookupTranslation(key);
+            if (typeof value !== "string") return key;
+            return value.replace(/\{(\w+)\}/g, (match, name) => (name in data ? data[name] : match));
+        },
     },
 };
 const mockTemplateObject = {

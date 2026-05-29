@@ -6,6 +6,20 @@
 const MODULE_ID = "star-template-bar";
 const MODULE_TITLE = "Star Template Bar";
 
+// Localization helper. Every visible string is stored under the STARTEMPLATEBAR namespace
+// in localization/<lang>.json (registered via module.json "languages"). Pass `data` to
+// interpolate {placeholders} via game.i18n.format; omit it for a plain lookup.
+function translate(key, data) {
+    const id = `STARTEMPLATEBAR.${key}`;
+    return data ? game.i18n.format(id, data) : game.i18n.localize(id);
+}
+
+// All user-facing notifications are prefixed with the module title for clarity in Foundry's
+// notification stream, e.g. "Star Template Bar: <message>".
+function notify(key, data) {
+    ui.notifications.warn(`${MODULE_TITLE}: ${translate(key, data)}`);
+}
+
 let configOpen = false;
 
 function escapeHtml(str) {
@@ -76,7 +90,7 @@ function withPlacementListeners(template, onPlaceCb) {
 
 function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     if (!canvas?.scene) {
-        ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
+        notify("Notify.NoActiveScene");
         return;
     }
 
@@ -205,7 +219,7 @@ function canManageTemplate(t) {
 }
 
 function templateOwnerName(t) {
-    return t.user?.name ?? game.users?.get(t.user)?.name ?? "Unknown";
+    return t.user?.name ?? game.users?.get(t.user)?.name ?? translate("Move.UnknownOwner");
 }
 
 function templateDistanceFt(t) {
@@ -213,6 +227,8 @@ function templateDistanceFt(t) {
 }
 
 function buildMoveContent(templates, pendingMoveOriginals) {
+    const moveTitle   = escapeHtml(translate("Move.MoveTitle"));
+    const removeTitle = escapeHtml(translate("Move.RemoveTitle"));
     const rows = templates.map(t => {
         const f         = t.flags?.[MODULE_ID] ?? {};
         const name      = escapeHtml(String(f.name ?? ""));
@@ -248,15 +264,15 @@ function buildMoveContent(templates, pendingMoveOriginals) {
                 <td>${angleCell}</td>
                 <td><span class="stb-color-swatch" style="background:${safeColor}"></span></td>
                 <td class="stb-action-cell">
-                    <button type="button" class="stb-move-template-btn" title="Pick up and move this template">&#9999;</button>
-                    <button type="button" class="stb-remove-template-btn" title="Delete this template">&#10005;</button>
+                    <button type="button" class="stb-move-template-btn" title="${moveTitle}">&#9999;</button>
+                    <button type="button" class="stb-remove-template-btn" title="${removeTitle}">&#10005;</button>
                 </td>
             </tr>
         `;
     }).join("");
     return `
         <table class="stb-config-table">
-            <thead><tr><th>Name</th><th>Owner</th><th>Shape</th><th>Size</th><th>Angle</th><th>Color</th><th></th></tr></thead>
+            <thead><tr><th>${escapeHtml(translate("Table.Name"))}</th><th>${escapeHtml(translate("Table.Owner"))}</th><th>${escapeHtml(translate("Table.Shape"))}</th><th>${escapeHtml(translate("Table.Size"))}</th><th>${escapeHtml(translate("Table.Angle"))}</th><th>${escapeHtml(translate("Table.Color"))}</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
     `;
@@ -361,19 +377,19 @@ function renderLayoutEditor(html, pendingGrid, pendingCustom) {
     const flat = pendingGrid.flat().filter(name => knownNames.has(name));
 
     if (flat.length === 0) {
-        panel.append('<p class="stb-layout-empty">No custom templates configured. Add templates on the Templates tab.</p>');
+        panel.append(`<p class="stb-layout-empty">${translate("Layout.Empty")}</p>`);
         return;
     }
 
     const numRows = pendingGrid.length || 1;
     const numCols = Math.ceil(flat.length / numRows);
 
-    panel.append('<p class="stb-layout-hint">Drag any template to a slot to reorder &middot; Change the row count to reorganize the grid</p>');
+    panel.append(`<p class="stb-layout-hint">${translate("Layout.Hint")}</p>`);
 
     const controls = $('<div class="stb-layout-controls">');
     const rowInput  = $('<input type="number" class="stb-rows-input">')
         .attr("min", 1).attr("max", flat.length).val(numRows);
-    controls.append($('<label class="stb-rows-label">').text("Number of Rows: ").append(rowInput));
+    controls.append($('<label class="stb-rows-label">').text(translate("Layout.NumberOfRows")).append(rowInput));
     panel.append(controls);
 
     const editor = $('<div class="stb-layout-editor">');
@@ -407,32 +423,32 @@ function reshapeGrid(pendingGrid, numRows, flat = pendingGrid.flat()) {
 
 function buildTemplateFormHtml(prefix, color) {
     const p = `stb-${prefix}`;
-    const typeOptions = TEMPLATE_TYPES.map(t =>
-        `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+    const typeOptions = TEMPLATE_TYPES.map(type =>
+        `<option value="${type}">${escapeHtml(translate(`Shape.${type}`))}</option>`
     ).join("");
     return `
         <div class="stb-form-row">
-            <label>Shape</label>
+            <label>${translate("Form.Shape")}</label>
             <select class="${p}type">${typeOptions}</select>
         </div>
         <div class="stb-form-row ${p}distance-row">
-            <label>Size (ft)</label>
+            <label>${translate("Form.Size")}</label>
             <input type="number" class="${p}distance" value="20" min="5" step="5">
         </div>
         <div class="stb-form-row ${p}cone-row" style="display:none">
-            <label>Angle (&deg;)</label>
+            <label>${translate("Form.Angle")}</label>
             <input type="number" class="${p}angle" value="53.13" min="1" max="360">
         </div>
         <div class="stb-form-row ${p}width-row" style="display:none">
-            <label>Width (ft)</label>
+            <label>${translate("Form.Width")}</label>
             <input type="number" class="${p}width" value="5" min="5" step="5">
         </div>
         <div class="stb-form-row ${p}height-row" style="display:none">
-            <label>Height (ft)</label>
+            <label>${translate("Form.Height")}</label>
             <input type="number" class="${p}height" value="20" min="5" step="5">
         </div>
         <div class="stb-form-row">
-            <label>Color</label>
+            <label>${translate("Form.Color")}</label>
             <input type="color" class="${p}color" value="${escapeHtml(color)}">
         </div>
     `;
@@ -474,19 +490,19 @@ async function openPlaceDialog() {
     let templateConfig = null;
 
     await foundry.applications.api.DialogV2.wait({
-        window:      { title: "Place Template" },
+        window:      { title: translate("Place.DialogTitle") },
         content,
         rejectClose: false,
         buttons: [
             {
                 action: "place",
-                label: "Place",
+                label: translate("Place.PlaceButton"),
                 callback: (event, button, dialog) => {
                     const $html    = $(dialog.element);
                     templateConfig = readTemplateForm($html, "");
                 }
             },
-            { action: "cancel", label: "Cancel", default: true }
+            { action: "cancel", label: translate("Place.Cancel"), default: true }
         ],
         render: (event, dialog) => {
             const $html = $(dialog.element);
@@ -517,7 +533,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     const panel = (name) => `stb-tab-panel${name === initialTab ? "" : " stb-tab-panel-hidden"}`;
 
     const renderTemplatesBody = () => pendingCustom.length === 0
-        ? '<tr class="stb-no-custom-row"><td colspan="7">No custom templates saved.</td></tr>'
+        ? `<tr class="stb-no-custom-row"><td colspan="7">${translate("Templates.Empty")}</td></tr>`
         : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
 
     function renderMoveTab($html) {
@@ -525,7 +541,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         const templates = (canvas?.scene?.templates?.contents ?? [])
             .filter(canManageTemplate);
         if (templates.length === 0) {
-            movePanelEl.html('<p class="stb-move-empty">No templates on the map.</p>');
+            movePanelEl.html(`<p class="stb-move-empty">${translate("Move.Empty")}</p>`);
         } else {
             movePanelEl.html(buildMoveContent(templates, pendingMoveOriginals));
         }
@@ -552,11 +568,11 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         $html.on("click", ".stb-add-btn", () => {
             const name = $html.find(".stb-new-name").val().trim();
             if (!name) {
-                ui.notifications.warn(`${MODULE_TITLE}: Template name is required.`);
+                notify("Notify.NameRequired");
                 return;
             }
             if (pendingCustom.some(t => t.name === name)) {
-                ui.notifications.warn(`${MODULE_TITLE}: A template named "${escapeHtml(name)}" already exists.`);
+                notify("Notify.NameExists", { name: escapeHtml(name) });
                 return;
             }
             const { t, distance, angle, width, height, fillColor } = readTemplateForm($html, "new-");
@@ -592,7 +608,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             }
             row.remove();
             if ($html.find('[data-panel="move"] tbody tr[data-id]').length === 0) {
-                $html.find('[data-panel="move"]').html('<p class="stb-move-empty">No templates on the map.</p>');
+                $html.find('[data-panel="move"]').html(`<p class="stb-move-empty">${translate("Move.Empty")}</p>`);
             }
         });
 
@@ -694,16 +710,16 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
 
     const content = `
         <div class="stb-tabs">
-            <button type="button" class="${tab("templates")}" data-tab="templates">Templates</button>
-            <button type="button" class="${tab("move")}"      data-tab="move">Move</button>
-            <button type="button" class="${tab("layout")}"    data-tab="layout">Layout</button>
-            <button type="button" class="${tab("reset")}"     data-tab="reset">Reset</button>
-            <button type="button" class="${tab("extra")}"     data-tab="extra">Extra</button>
+            <button type="button" class="${tab("templates")}" data-tab="templates">${translate("Tab.Templates")}</button>
+            <button type="button" class="${tab("move")}"      data-tab="move">${translate("Tab.Move")}</button>
+            <button type="button" class="${tab("layout")}"    data-tab="layout">${translate("Tab.Layout")}</button>
+            <button type="button" class="${tab("reset")}"     data-tab="reset">${translate("Tab.Reset")}</button>
+            <button type="button" class="${tab("extra")}"     data-tab="extra">${translate("Tab.Extra")}</button>
         </div>
         <div class="${panel("templates")}" data-panel="templates">
             <table class="stb-config-table">
                 <thead>
-                    <tr><th>Name</th><th>Shape</th><th>Size</th><th>Width</th><th>Angle</th><th>Color</th><th></th></tr>
+                    <tr><th>${translate("Table.Name")}</th><th>${translate("Table.Shape")}</th><th>${translate("Table.Size")}</th><th>${translate("Table.Width")}</th><th>${translate("Table.Angle")}</th><th>${translate("Table.Color")}</th><th></th></tr>
                 </thead>
                 <tbody>
                     ${renderTemplatesBody()}
@@ -712,11 +728,11 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             <div class="stb-add-section">
                 <div class="stb-add-form">
                     <div class="stb-form-row">
-                        <label>Name</label>
-                        <input type="text" class="stb-new-name" placeholder="e.g. Fireball">
+                        <label>${translate("Form.Name")}</label>
+                        <input type="text" class="stb-new-name" placeholder="${escapeHtml(translate("Form.NamePlaceholder"))}">
                     </div>
                     ${buildTemplateFormHtml("new-", "#ff0000")}
-                    <button type="button" class="stb-add-btn">Add Template</button>
+                    <button type="button" class="stb-add-btn">${translate("Templates.AddButton")}</button>
                 </div>
             </div>
         </div>
@@ -727,9 +743,9 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                 <label class="stb-extra-item">
                     <input type="checkbox" class="stb-hide-bar-checkbox"${barHidden ? " checked" : ""}>
                     <div>
-                        <strong>Hide Button Bar</strong>
-                        <p>Hide the button bar from the screen.</p>
-                        <p>To restore it, uncheck this option in Configure Game Settings.</p>
+                        <strong>${translate("Extra.HideBarTitle")}</strong>
+                        <p>${translate("Extra.HideBarDesc")}</p>
+                        <p>${translate("Extra.HideBarRestore")}</p>
                     </div>
                 </label>
             </div>
@@ -738,30 +754,30 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             <div class="stb-reset-panel">
                 <div class="stb-reset-item">
                     <div>
-                        <strong>Reset Bar Position</strong>
-                        <p>Move the button bar to the default position at the top center of the screen.</p>
+                        <strong>${translate("Reset.PositionTitle")}</strong>
+                        <p>${translate("Reset.PositionDesc")}</p>
                     </div>
-                    <button type="button" class="stb-reset-position-btn">Reset Position</button>
+                    <button type="button" class="stb-reset-position-btn">${translate("Reset.PositionButton")}</button>
                 </div>
                 <div class="stb-reset-item">
                     <div>
-                        <strong>Clear All Templates</strong>
-                        <p>Remove every template from the bar.</p>
+                        <strong>${translate("Reset.ClearTitle")}</strong>
+                        <p>${translate("Reset.ClearDesc")}</p>
                     </div>
-                    <button type="button" class="stb-clear-templates-btn">Clear Templates</button>
+                    <button type="button" class="stb-clear-templates-btn">${translate("Reset.ClearButton")}</button>
                 </div>
             </div>
         </div>
     `;
 
     await foundry.applications.api.DialogV2.wait({
-        window:      { title: "Star Template Bar — Configure (save to persist changes)" },
+        window:      { title: translate("Dialog.Title", { title: MODULE_TITLE }) },
         content,
         rejectClose: false,
         buttons: [
             {
                 action: "save",
-                label: "Save",
+                label: translate("Dialog.Save"),
                 callback: async (event, button, dialog) => {
                     saved = true;
                     const $html = $(dialog.element);
@@ -778,7 +794,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     renderCustomButtons(bar, { customTemplates: pendingCustom, grid: pendingGrid });
                 }
             },
-            { action: "cancel", label: "Cancel", default: true }
+            { action: "cancel", label: translate("Dialog.Cancel"), default: true }
         ],
         render: (event, dialog) => {
             const $html = $(dialog.element);
@@ -860,8 +876,8 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
 Hooks.once("init", () => {
     console.log(`${MODULE_TITLE} | Initialized`);
     game.settings.register(MODULE_ID, "barHidden", {
-        name: "Hide Button Bar",
-        hint: "Remove the button bar from the screen. Toggle this setting to bring it back.",
+        name: "STARTEMPLATEBAR.Settings.HideBar.Name",
+        hint: "STARTEMPLATEBAR.Settings.HideBar.Hint",
         scope: "client",
         config: true,
         type: Boolean,
@@ -877,10 +893,10 @@ Hooks.once("ready", () => {
     configOpen = false;
     const bar = $(`<div class="stb-template-bar">
         <div class="stb-bar-controls">
-            <span class="stb-bar-handle" title="Drag to move bar">&#8801;</span>
-            <button class="stb-place-btn" title="Place a template on the map">&#8853; Place</button>
-            <button class="stb-move-btn" title="Move or remove placed templates">&#8597; Move</button>
-            <button class="stb-config-btn" title="Configure templates">&#9881;</button>
+            <span class="stb-bar-handle" title="${escapeHtml(translate("Bar.DragHandleTitle"))}">&#8801;</span>
+            <button class="stb-place-btn" title="${escapeHtml(translate("Bar.PlaceButtonTitle"))}">&#8853; ${translate("Bar.PlaceButton")}</button>
+            <button class="stb-move-btn" title="${escapeHtml(translate("Bar.MoveButtonTitle"))}">&#8597; ${translate("Bar.MoveButton")}</button>
+            <button class="stb-config-btn" title="${escapeHtml(translate("Bar.ConfigButtonTitle"))}">&#9881;</button>
         </div>
         <div class="stb-custom-grid"></div>
     </div>`);
@@ -899,12 +915,12 @@ Hooks.once("ready", () => {
     bar.find(".stb-move-btn").on("click", () => {
         if (configOpen) return;
         if (!canvas?.scene) {
-            ui.notifications.warn(`${MODULE_TITLE}: No active scene.`);
+            notify("Notify.NoActiveScene");
             return;
         }
         const movable = canvas.scene.templates.contents.filter(canManageTemplate);
         if (movable.length === 0) {
-            ui.notifications.warn(`${MODULE_TITLE}: No templates to move.`);
+            notify("Notify.NoTemplatesToMove");
             return;
         }
         configOpen = true;

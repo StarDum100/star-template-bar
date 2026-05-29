@@ -1,0 +1,94 @@
+{
+  "STARTEMPLATEBAR": {
+    "Bar": {
+      "DragHandleTitle": "Arrastra para mover la barra",
+      "PlaceButton": "Colocar",
+      "PlaceButtonTitle": "Colocar una plantilla en el mapa",
+      "MoveButton": "Mover",
+      "MoveButtonTitle": "Mover o eliminar plantillas colocadas",
+      "ConfigButtonTitle": "Configurar plantillas"
+    },
+    "Shape": {
+      "circle": "Círculo",
+      "cone": "Cono",
+      "ray": "Rayo",
+      "rect": "Rectángulo"
+    },
+    "Form": {
+      "Name": "Nombre",
+      "NamePlaceholder": "p. ej. Bola de fuego",
+      "Shape": "Forma",
+      "Size": "Tamaño (ft)",
+      "Angle": "Ángulo (&deg;)",
+      "Width": "Anchura (ft)",
+      "Height": "Altura (ft)",
+      "Color": "Color"
+    },
+    "Place": {
+      "DialogTitle": "Colocar plantilla",
+      "PlaceButton": "Colocar",
+      "Cancel": "Cancelar"
+    },
+    "Tab": {
+      "Templates": "Plantillas",
+      "Move": "Mover",
+      "Layout": "Disposición",
+      "Reset": "Restablecer",
+      "Extra": "Extra"
+    },
+    "Table": {
+      "Name": "Nombre",
+      "Owner": "Propietario",
+      "Shape": "Forma",
+      "Size": "Tamaño",
+      "Width": "Anchura",
+      "Angle": "Ángulo",
+      "Color": "Color"
+    },
+    "Templates": {
+      "Empty": "No hay plantillas personalizadas guardadas.",
+      "AddButton": "Añadir plantilla"
+    },
+    "Move": {
+      "Empty": "No hay plantillas en el mapa.",
+      "MoveTitle": "Coger y mover esta plantilla",
+      "RemoveTitle": "Eliminar esta plantilla",
+      "UnknownOwner": "Desconocido"
+    },
+    "Layout": {
+      "Empty": "No hay plantillas personalizadas configuradas. Añade plantillas en la pestaña Plantillas.",
+      "Hint": "Arrastra una plantilla a una casilla para reordenar &middot; Cambia el número de filas para reorganizar la cuadrícula",
+      "NumberOfRows": "Número de filas: "
+    },
+    "Extra": {
+      "HideBarTitle": "Ocultar la barra de botones",
+      "HideBarDesc": "Ocultar la barra de botones de la pantalla.",
+      "HideBarRestore": "Para restaurarla, desmarca esta opción en Configurar ajustes del juego."
+    },
+    "Reset": {
+      "PositionTitle": "Restablecer la posición de la barra",
+      "PositionDesc": "Mover la barra de botones a la posición predeterminada en la parte superior central de la pantalla.",
+      "PositionButton": "Restablecer posición",
+      "ClearTitle": "Eliminar todas las plantillas",
+      "ClearDesc": "Eliminar todas las plantillas de la barra.",
+      "ClearButton": "Eliminar plantillas"
+    },
+    "Dialog": {
+      "Title": "{title} -- Configurar (guarda para conservar los cambios)",
+      "Save": "Guardar",
+      "Cancel": "Cancelar"
+    },
+    "Notify": {
+      "NoActiveScene": "No hay escena activa.",
+      "NoTemplatesToMove": "No hay plantillas para mover.",
+      "NameRequired": "El nombre de la plantilla es obligatorio.",
+      "NameExists": "Ya existe una plantilla llamada «{name}»."
+    },
+    "Settings": {
+      "HideBar": {
+        "Name": "Ocultar la barra de botones",
+        "Hint": "Eliminar la barra de botones de la pantalla. Activa o desactiva este ajuste para recuperarla."
+      }
+    }
+  }
+}

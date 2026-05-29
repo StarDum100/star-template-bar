@@ -1,0 +1,94 @@
+{
+  "STARTEMPLATEBAR": {
+    "Bar": {
+      "DragHandleTitle": "Glissez pour déplacer la barre",
+      "PlaceButton": "Placer",
+      "PlaceButtonTitle": "Placer un gabarit sur la carte",
+      "MoveButton": "Déplacer",
+      "MoveButtonTitle": "Déplacer ou supprimer les gabarits placés",
+      "ConfigButtonTitle": "Configurer les gabarits"
+    },
+    "Shape": {
+      "circle": "Cercle",
+      "cone": "Cône",
+      "ray": "Rayon",
+      "rect": "Rectangle"
+    },
+    "Form": {
+      "Name": "Nom",
+      "NamePlaceholder": "p. ex. Boule de feu",
+      "Shape": "Forme",
+      "Size": "Taille (ft)",
+      "Angle": "Angle (&deg;)",
+      "Width": "Largeur (ft)",
+      "Height": "Hauteur (ft)",
+      "Color": "Couleur"
+    },
+    "Place": {
+      "DialogTitle": "Placer un gabarit",
+      "PlaceButton": "Placer",
+      "Cancel": "Annuler"
+    },
+    "Tab": {
+      "Templates": "Gabarits",
+      "Move": "Déplacer",
+      "Layout": "Disposition",
+      "Reset": "Réinitialiser",
+      "Extra": "Extra"
+    },
+    "Table": {
+      "Name": "Nom",
+      "Owner": "Propriétaire",
+      "Shape": "Forme",
+      "Size": "Taille",
+      "Width": "Largeur",
+      "Angle": "Angle",
+      "Color": "Couleur"
+    },
+    "Templates": {
+      "Empty": "Aucun gabarit personnalisé enregistré.",
+      "AddButton": "Ajouter un gabarit"
+    },
+    "Move": {
+      "Empty": "Aucun gabarit sur la carte.",
+      "MoveTitle": "Saisir et déplacer ce gabarit",
+      "RemoveTitle": "Supprimer ce gabarit",
+      "UnknownOwner": "Inconnu"
+    },
+    "Layout": {
+      "Empty": "Aucun gabarit personnalisé configuré. Ajoutez des gabarits dans l'onglet Gabarits.",
+      "Hint": "Faites glisser un gabarit vers un emplacement pour réorganiser &middot; Modifiez le nombre de lignes pour réorganiser la grille",
+      "NumberOfRows": "Nombre de lignes : "
+    },
+    "Extra": {
+      "HideBarTitle": "Masquer la barre de boutons",
+      "HideBarDesc": "Masquer la barre de boutons de l'écran.",
+      "HideBarRestore": "Pour la restaurer, décochez cette option dans Configurer les paramètres du jeu."
+    },
+    "Reset": {
+      "PositionTitle": "Réinitialiser la position de la barre",
+      "PositionDesc": "Déplacer la barre de boutons à la position par défaut, en haut au centre de l'écran.",
+      "PositionButton": "Réinitialiser la position",
+      "ClearTitle": "Effacer tous les gabarits",
+      "ClearDesc": "Retirer tous les gabarits de la barre.",
+      "ClearButton": "Effacer les gabarits"
+    },
+    "Dialog": {
+      "Title": "{title} -- Configurer (enregistrez pour conserver les modifications)",
+      "Save": "Enregistrer",
+      "Cancel": "Annuler"
+    },
+    "Notify": {
+      "NoActiveScene": "Aucune scène active.",
+      "NoTemplatesToMove": "Aucun gabarit à déplacer.",
+      "NameRequired": "Le nom du gabarit est obligatoire.",
+      "NameExists": "Un gabarit nommé «{name}» existe déjà."
+    },
+    "Settings": {
+      "HideBar": {
+        "Name": "Masquer la barre de boutons",
+        "Hint": "Retirer la barre de boutons de l'écran. Activez ou désactivez ce paramètre pour la faire réapparaître."
+      }
+    }
+  }
+}

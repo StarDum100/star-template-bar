@@ -17,5 +17,32 @@
   ],
   "styles": [
     "styles/styles.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "localization/en.json"
+    },
+    {
+      "lang": "fr",
+      "name": "Français",
+      "path": "localization/fr.json"
+    },
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "localization/de.json"
+    },
+    {
+      "lang": "es",
+      "name": "Español",
+      "path": "localization/es.json"
+    },
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "localization/pt-BR.json"
+    }
   ]
 }

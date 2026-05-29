@@ -1,3 +1,7 @@
+const fs   = require("fs");
+const path = require("path");
+
+const ROOT     = path.join(__dirname, "..");
 const manifest = require("../module.json");
 
 describe("module.json", () => {
@@ -45,5 +49,37 @@ describe("module.json", () => {
         const min = parseInt(manifest.compatibility.minimum);
         const ver = parseInt(manifest.compatibility.verified);
         expect(min).toBeLessThanOrEqual(ver);
+    });
+
+    it("all declared language files exist on disk", () => {
+        for (const language of manifest.languages ?? []) {
+            expect(fs.existsSync(path.join(ROOT, language.path))).toBe(true);
+        }
+    });
+
+    describe("languages", () => {
+        it("declares at least one language", () => {
+            expect(manifest.languages?.length).toBeGreaterThan(0);
+        });
+
+        it("ships an English localization", () => {
+            expect(manifest.languages.some((l) => l.lang === "en")).toBe(true);
+        });
+
+        it("every language entry has lang, name, and path", () => {
+            for (const language of manifest.languages ?? []) {
+                expect(language.lang).toBeTruthy();
+                expect(language.name).toBeTruthy();
+                expect(language.path).toBeTruthy();
+            }
+        });
+
+        it("every declared language file is valid JSON nested under STARTEMPLATEBAR", () => {
+            for (const language of manifest.languages ?? []) {
+                const raw = fs.readFileSync(path.join(ROOT, language.path), "utf-8");
+                const parsed = JSON.parse(raw);
+                expect(parsed.STARTEMPLATEBAR).toBeDefined();
+            }
+        });
     });
 });

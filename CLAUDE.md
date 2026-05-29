@@ -41,9 +41,22 @@ The Move flow is re-entrant: clicking the move icon closes the dialog, calls `pi
 
 All classes use the `stb-` prefix. The custom property `--stb-cols` is set inline on the grid element to drive `grid-template-columns` in CSS.
 
+### Localization
+
+- Every visible UI string is stored under the `STARTEMPLATEBAR` namespace in `localization/<lang>.json`, registered via the `languages` array in `module.json`. English (`localization/en.json`) is the source of truth. Shipped languages: English (`en`), French (`fr`), German (`de`), Spanish (`es`), Brazilian Portuguese (`pt-BR`).
+- `translate(key, data)` is the in-module helper: it prefixes the key with `STARTEMPLATEBAR.` and calls `game.i18n.localize(key)` (no `data`) or `game.i18n.format(key, data)` (with `{placeholder}` interpolation). All UI text must go through `translate()` — do not hardcode user-facing strings. (The helper is named `translate`, not `t`, because `t` is used throughout the module as the variable for a template/shape type.)
+- `notify(key, data)` wraps `ui.notifications.warn` and prefixes the localized message with `MODULE_TITLE`, producing e.g. `"Star Template Bar: <message>"`.
+- The `barHidden` setting registers its `name`/`hint` as raw i18n keys (`STARTEMPLATEBAR.Settings.HideBar.*`); Foundry localizes those automatically when the settings menu renders.
+- `MODULE_TITLE` (`"Star Template Bar"`) is the brand name and is intentionally **not** localized; it is interpolated into the dialog title and notification prefixes.
+- Template shape types are stored by their lowercase value (`circle`/`cone`/`ray`/`rect`); the display label for each is localized under `Shape.<type>`. Units and symbols (`ft`, `&deg;`, `&times;`, `&mdash;`) are not localized.
+- Translation values are trusted (shipped in-repo), but any value placed into an HTML attribute is still passed through `escapeHtml()` so a translation containing a quote can't break the markup.
+- Adding a language: drop a `localization/<lang>.json` with the same nested keys, add an entry to `module.json` `languages`. `tests/localization.test.js` then enforces key/placeholder parity with English automatically.
+
 ## Test environment
 
-`tests/main.test.js` sets up full jsdom mocks of Foundry globals (`Hooks`, `game`, `canvas`, `CONFIG`, `ui`, `foundry`) before `require("../scripts/main.js")`. The `Hooks.once` mock captures callbacks into a `hookCallbacks` map so tests invoke `init` and `ready` directly.
+`tests/main.test.js` sets up full jsdom mocks of Foundry globals (`Hooks`, `game`, `canvas`, `CONFIG`, `ui`, `foundry`) before `require("../scripts/main.js")`. The `Hooks.once` mock captures callbacks into a `hookCallbacks` map so tests invoke `init` and `ready` directly. The `game.i18n` mock loads the real `localization/en.json` and resolves keys through the same `localize`/`format` contract Foundry uses, so assertions check actual English text rather than raw keys.
+
+`tests/localization.test.js` validates the language files: English is non-empty with string values, and any additional language has full key + `{placeholder}` parity with English. `tests/manifest.test.js` checks every declared `languages` path exists and parses as JSON nested under `STARTEMPLATEBAR`. `tests/encoding.test.js` guards the source and localization files against Windows-1252 double-encoding corruption.
 
 `DialogV2.wait` is mocked to expose `__lastOptions` and `__lastInstance` so tests can call `options.render(...)` to wire up event handlers, then trigger buttons via `options.buttons[n].callback(...)`.
 

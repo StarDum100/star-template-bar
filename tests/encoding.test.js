@@ -6,6 +6,11 @@ const FILES = [
     path.join(__dirname, "../styles/styles.css"),
     path.join(__dirname, "main.test.js"),
     path.join(__dirname, "encoding.test.js"),
+    path.join(__dirname, "../localization/en.json"),
+    path.join(__dirname, "../localization/fr.json"),
+    path.join(__dirname, "../localization/de.json"),
+    path.join(__dirname, "../localization/es.json"),
+    path.join(__dirname, "../localization/pt-BR.json"),
 ];
 
 // String.fromCodePoint keeps this file pure ASCII while producing the runtime

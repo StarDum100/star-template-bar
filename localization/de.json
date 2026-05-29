@@ -1,0 +1,94 @@
+{
+  "STARTEMPLATEBAR": {
+    "Bar": {
+      "DragHandleTitle": "Ziehen, um die Leiste zu verschieben",
+      "PlaceButton": "Platzieren",
+      "PlaceButtonTitle": "Eine Schablone auf der Karte platzieren",
+      "MoveButton": "Bewegen",
+      "MoveButtonTitle": "Platzierte Schablonen bewegen oder entfernen",
+      "ConfigButtonTitle": "Schablonen konfigurieren"
+    },
+    "Shape": {
+      "circle": "Kreis",
+      "cone": "Kegel",
+      "ray": "Strahl",
+      "rect": "Rechteck"
+    },
+    "Form": {
+      "Name": "Name",
+      "NamePlaceholder": "z. B. Feuerball",
+      "Shape": "Form",
+      "Size": "Größe (ft)",
+      "Angle": "Winkel (&deg;)",
+      "Width": "Breite (ft)",
+      "Height": "Höhe (ft)",
+      "Color": "Farbe"
+    },
+    "Place": {
+      "DialogTitle": "Schablone platzieren",
+      "PlaceButton": "Platzieren",
+      "Cancel": "Abbrechen"
+    },
+    "Tab": {
+      "Templates": "Schablonen",
+      "Move": "Bewegen",
+      "Layout": "Layout",
+      "Reset": "Zurücksetzen",
+      "Extra": "Extra"
+    },
+    "Table": {
+      "Name": "Name",
+      "Owner": "Besitzer",
+      "Shape": "Form",
+      "Size": "Größe",
+      "Width": "Breite",
+      "Angle": "Winkel",
+      "Color": "Farbe"
+    },
+    "Templates": {
+      "Empty": "Keine benutzerdefinierten Schablonen gespeichert.",
+      "AddButton": "Schablone hinzufügen"
+    },
+    "Move": {
+      "Empty": "Keine Schablonen auf der Karte.",
+      "MoveTitle": "Diese Schablone aufnehmen und bewegen",
+      "RemoveTitle": "Diese Schablone löschen",
+      "UnknownOwner": "Unbekannt"
+    },
+    "Layout": {
+      "Empty": "Keine benutzerdefinierten Schablonen konfiguriert. Füge Schablonen im Reiter Schablonen hinzu.",
+      "Hint": "Ziehe eine Schablone auf ein Feld, um sie neu anzuordnen &middot; Ändere die Zeilenanzahl, um das Raster neu zu organisieren",
+      "NumberOfRows": "Anzahl der Zeilen: "
+    },
+    "Extra": {
+      "HideBarTitle": "Schaltflächenleiste ausblenden",
+      "HideBarDesc": "Die Schaltflächenleiste vom Bildschirm ausblenden.",
+      "HideBarRestore": "Um sie wiederherzustellen, deaktiviere diese Option unter Spieleinstellungen konfigurieren."
+    },
+    "Reset": {
+      "PositionTitle": "Leistenposition zurücksetzen",
+      "PositionDesc": "Die Schaltflächenleiste an die Standardposition oben in der Bildschirmmitte verschieben.",
+      "PositionButton": "Position zurücksetzen",
+      "ClearTitle": "Alle Schablonen löschen",
+      "ClearDesc": "Alle Schablonen aus der Leiste entfernen.",
+      "ClearButton": "Schablonen löschen"
+    },
+    "Dialog": {
+      "Title": "{title} -- Konfigurieren (speichern, um Änderungen zu übernehmen)",
+      "Save": "Speichern",
+      "Cancel": "Abbrechen"
+    },
+    "Notify": {
+      "NoActiveScene": "Keine aktive Szene.",
+      "NoTemplatesToMove": "Keine Schablonen zum Bewegen.",
+      "NameRequired": "Der Schablonenname ist erforderlich.",
+      "NameExists": "Eine Schablone namens „{name}“ existiert bereits."
+    },
+    "Settings": {
+      "HideBar": {
+        "Name": "Schaltflächenleiste ausblenden",
+        "Hint": "Die Schaltflächenleiste vom Bildschirm entfernen. Schalte diese Einstellung um, um sie zurückzuholen."
+      }
+    }
+  }
+}
