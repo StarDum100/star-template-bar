@@ -10,7 +10,7 @@
   ],
   "compatibility": {
     "minimum": "14",
-    "verified": "14"
+    "verified": "14.362"
   },
   "esmodules": [
     "scripts/main.js"
