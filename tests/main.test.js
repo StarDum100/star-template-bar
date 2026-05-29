@@ -114,7 +114,7 @@ global.foundry.applications.api.DialogV2.wait = jest.fn().mockImplementation((op
     return new Promise(r => { resolveDialog = r; });
 });
 
-require("../scripts/main.js");
+const { commitMove, rollbackCanceledChanges } = require("../scripts/main.js");
 
 // Wrap window.addEventListener so tests can inspect pointerdown registrations
 // while still delegating to the real jsdom implementation.
@@ -2388,6 +2388,109 @@ describe("Star Template Bar", () => {
             await simulateCanvasClick();
 
             expect(global.canvas.scene.createEmbeddedDocuments).toHaveBeenCalledTimes(2);
+        });
+    });
+});
+
+// Direct unit tests for the extracted deferred-change helpers. These call the exported
+// functions against a minimal canvas.scene mock, exercising the create/delete sequencing,
+// the pendingMoveOriginals bookkeeping, and the per-step failure isolation — without driving
+// the whole config dialog (which the integration tests above already cover end to end).
+describe("commitMove / rollbackCanceledChanges (deferred-change helpers)", () => {
+    let create, del;
+    beforeEach(() => {
+        global.ui.notifications.warn.mockClear();
+        create = jest.fn(async (type, arr) => arr.map((d, i) => ({ id: `new-${i + 1}`, ...d })));
+        del    = jest.fn(async () => []);
+        global.canvas.scene.createEmbeddedDocuments = create;
+        global.canvas.scene.deleteEmbeddedDocuments = del;
+    });
+
+    describe("commitMove", () => {
+        it("deletes the old template, recreates it at the rounded position, and tracks the new id", async () => {
+            const origData = { t: "circle", x: 0, y: 0, fillColor: "#abcdef" };
+            const moves = new Map([["t1", origData]]);
+            await commitMove("t1", {}, { x: 300.4, y: 250.6 }, moves);
+
+            expect(del).toHaveBeenCalledWith("MeasuredTemplate", ["t1"]);
+            expect(create).toHaveBeenCalledWith(
+                "MeasuredTemplate", [expect.objectContaining({ x: 300, y: 251 })]
+            );
+            // The old id is no longer tracked; the new copy maps back to the original data.
+            expect(moves.has("t1")).toBe(false);
+            expect(moves.get("new-1")).toEqual(origData);
+        });
+
+        it("derives original data via templateToCreateData when the move isn't already tracked", async () => {
+            const moves = new Map();
+            const raw = { t: "circle", distance: 20, x: 1, y: 1, fillColor: "#ff0000", flags: {} };
+            await commitMove("t1", raw, { x: 100, y: 100 }, moves);
+
+            expect(del).toHaveBeenCalledWith("MeasuredTemplate", ["t1"]);
+            expect(create).toHaveBeenCalledWith(
+                "MeasuredTemplate", [expect.objectContaining({ x: 100, y: 100 })]
+            );
+            expect(moves.get("new-1")).toBeDefined();
+        });
+
+        it("restores the original when recreating the moved copy fails", async () => {
+            const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+            create.mockRejectedValueOnce(new Error("placement denied")).mockResolvedValue([]);
+            const origData = { t: "circle", x: 5, y: 6 };
+            const moves = new Map([["t1", origData]]);
+            await commitMove("t1", {}, { x: 100, y: 100 }, moves);
+
+            // First create (the moved copy) rejected; the original is recreated at its start position.
+            expect(create).toHaveBeenCalledTimes(2);
+            expect(create).toHaveBeenLastCalledWith("MeasuredTemplate", [origData]);
+            expect(moves.has("t1")).toBe(false);
+            expect(errSpy).toHaveBeenCalled();
+            errSpy.mockRestore();
+        });
+    });
+
+    describe("rollbackCanceledChanges", () => {
+        it("recreates every deleted template", async () => {
+            const removals = new Map([
+                ["t1", { t: "circle", x: 10, y: 20 }],
+                ["t2", { t: "cone",   x: 30, y: 40 }],
+            ]);
+            await rollbackCanceledChanges(removals, new Map());
+
+            expect(create).toHaveBeenCalledTimes(2);
+            expect(create).toHaveBeenCalledWith("MeasuredTemplate", [{ t: "circle", x: 10, y: 20 }]);
+            expect(create).toHaveBeenCalledWith("MeasuredTemplate", [{ t: "cone", x: 30, y: 40 }]);
+            expect(del).not.toHaveBeenCalled();
+        });
+
+        it("deletes the moved copy and recreates the original for each move", async () => {
+            const origData = { t: "circle", x: 1, y: 2 };
+            const moves = new Map([["new-9", origData]]);
+            await rollbackCanceledChanges(new Map(), moves);
+
+            expect(del).toHaveBeenCalledWith("MeasuredTemplate", ["new-9"]);
+            expect(create).toHaveBeenCalledWith("MeasuredTemplate", [origData]);
+        });
+
+        it("rolls back both a deletion and a move together", async () => {
+            const removals = new Map([["t1", { t: "circle", x: 0, y: 0 }]]);
+            const moves    = new Map([["new-2", { t: "cone", x: 9, y: 9 }]]);
+            await rollbackCanceledChanges(removals, moves);
+
+            // One recreate for the deletion + one recreate for the move's original = 2.
+            expect(create).toHaveBeenCalledTimes(2);
+            expect(del).toHaveBeenCalledWith("MeasuredTemplate", ["new-2"]);
+        });
+
+        it("continues restoring the rest when one recreation fails", async () => {
+            const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+            create.mockRejectedValueOnce(new Error("permission denied")).mockResolvedValue([]);
+            const removals = new Map([["t1", { a: 1 }], ["t2", { b: 2 }]]);
+            await rollbackCanceledChanges(removals, new Map());
+
+            expect(create).toHaveBeenCalledTimes(2);
+            expect(errSpy).toHaveBeenCalled();
+            errSpy.mockRestore();
         });
     });
 });

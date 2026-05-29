@@ -33,9 +33,13 @@ The `gridDist()` and `gridWidthScale()` helpers translate between Foundry's inte
 
 ### Config dialog and deferred saves
 
-`openConfig(bar, initialTab, resumeState)` manages all pending changes in local variables (`pendingCustom`, `pendingGrid`, `pendingRemovalOriginals`, `pendingMoveOriginals`, `pendingResetPosition`). Nothing is written to flags until the Save button fires. Cancel restores deleted/moved templates by calling `createEmbeddedDocuments` with their original data.
+`openConfig(bar, initialTab, resumeState)` manages all pending changes in local variables (`pendingCustom`, `pendingGrid`, `pendingRemovalOriginals`, `pendingMoveOriginals`, `pendingResetPosition`). Nothing is written to flags until the Save button fires. It owns the per-tab event wiring and delegates the dialog markup to `buildConfigContent(pendingCustom, barHidden, initialTab)` (which calls `renderTemplatesBody(pendingCustom)` for the Templates-tab rows).
 
-The Move flow is re-entrant: clicking the move icon closes the dialog, calls `pickNewPosition()`, then reopens `openConfig` via `openConfig(bar, "move", resumeState)` passing all pending state through `resumeState` so nothing is lost between the two dialog sessions.
+The deferred create/delete bookkeeping is extracted into two exported async helpers:
+- `commitMove(oldId, raw, newPos, pendingMoveOriginals)` — deletes the template at its old position, recreates it at `newPos`, and records the new copy's id → original data so Cancel can reverse it; on recreate failure it restores the original so a move can't lose the template.
+- `rollbackCanceledChanges(pendingRemovalOriginals, pendingMoveOriginals)` — on Cancel, recreates each deleted template and reverses each move (delete the relocated copy, recreate the original); each step is isolated so one failure doesn't abort the rest.
+
+Both are exported for direct unit testing (see the `commitMove / rollbackCanceledChanges` describe block in `tests/main.test.js`). The Move flow is re-entrant: clicking the move icon closes the dialog, calls `pickNewPosition()`, then reopens `openConfig` via `openConfig(bar, "move", resumeState)` passing all pending state through `resumeState` so nothing is lost between the two dialog sessions.
 
 ### CSS
 

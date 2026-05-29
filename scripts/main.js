@@ -517,6 +517,125 @@ async function openPlaceDialog() {
     }
 }
 
+// Renders the Templates-tab table body: the empty-state row when there are no custom
+// templates, otherwise one editable row per template in saved order.
+function renderTemplatesBody(pendingCustom) {
+    return pendingCustom.length === 0
+        ? `<tr class="stb-no-custom-row"><td colspan="7">${translate("Templates.Empty")}</td></tr>`
+        : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
+}
+
+// Assembles the full config-dialog inner HTML (the five tabs and their panels). `initialTab`
+// decides which tab/panel starts active; the Layout and Move panels are populated on demand.
+function buildConfigContent(pendingCustom, barHidden, initialTab) {
+    const tab   = (name) => `stb-tab${name === initialTab ? " stb-tab-active" : ""}`;
+    const panel = (name) => `stb-tab-panel${name === initialTab ? "" : " stb-tab-panel-hidden"}`;
+
+    return `
+        <div class="stb-tabs">
+            <button type="button" class="${tab("templates")}" data-tab="templates">${translate("Tab.Templates")}</button>
+            <button type="button" class="${tab("move")}"      data-tab="move">${translate("Tab.Move")}</button>
+            <button type="button" class="${tab("layout")}"    data-tab="layout">${translate("Tab.Layout")}</button>
+            <button type="button" class="${tab("reset")}"     data-tab="reset">${translate("Tab.Reset")}</button>
+            <button type="button" class="${tab("extra")}"     data-tab="extra">${translate("Tab.Extra")}</button>
+        </div>
+        <div class="${panel("templates")}" data-panel="templates">
+            <table class="stb-config-table">
+                <thead>
+                    <tr><th>${translate("Table.Name")}</th><th>${translate("Table.Shape")}</th><th>${translate("Table.Size")}</th><th>${translate("Table.Width")}</th><th>${translate("Table.Angle")}</th><th>${translate("Table.Color")}</th><th></th></tr>
+                </thead>
+                <tbody>
+                    ${renderTemplatesBody(pendingCustom)}
+                </tbody>
+            </table>
+            <div class="stb-add-section">
+                <div class="stb-add-form">
+                    <div class="stb-form-row">
+                        <label>${translate("Form.Name")}</label>
+                        <input type="text" class="stb-new-name" placeholder="${escapeHtml(translate("Form.NamePlaceholder"))}">
+                    </div>
+                    ${buildTemplateFormHtml("new-", "#ff0000")}
+                    <button type="button" class="stb-add-btn">${translate("Templates.AddButton")}</button>
+                </div>
+            </div>
+        </div>
+        <div class="${panel("layout")}" data-panel="layout"></div>
+        <div class="${panel("move")}" data-panel="move"></div>
+        <div class="${panel("extra")}" data-panel="extra">
+            <div class="stb-extra-panel">
+                <label class="stb-extra-item">
+                    <input type="checkbox" class="stb-hide-bar-checkbox"${barHidden ? " checked" : ""}>
+                    <div>
+                        <strong>${translate("Extra.HideBarTitle")}</strong>
+                        <p>${translate("Extra.HideBarDesc")}</p>
+                        <p>${translate("Extra.HideBarRestore")}</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+        <div class="${panel("reset")}" data-panel="reset">
+            <div class="stb-reset-panel">
+                <div class="stb-reset-item">
+                    <div>
+                        <strong>${translate("Reset.PositionTitle")}</strong>
+                        <p>${translate("Reset.PositionDesc")}</p>
+                    </div>
+                    <button type="button" class="stb-reset-position-btn">${translate("Reset.PositionButton")}</button>
+                </div>
+                <div class="stb-reset-item">
+                    <div>
+                        <strong>${translate("Reset.ClearTitle")}</strong>
+                        <p>${translate("Reset.ClearDesc")}</p>
+                    </div>
+                    <button type="button" class="stb-clear-templates-btn">${translate("Reset.ClearButton")}</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Commits a move: deletes the template at its old position and recreates it at newPos,
+// tracking the new copy's id -> original data in pendingMoveOriginals so a later Cancel can
+// roll it back. If the recreate fails, the original is restored so a move can never lose it.
+async function commitMove(oldId, raw, newPos, pendingMoveOriginals) {
+    const roundedPos = { x: Math.round(newPos.x), y: Math.round(newPos.y) };
+    const origData   = pendingMoveOriginals.get(oldId) ?? templateToCreateData(raw);
+    const createData = { ...origData, x: roundedPos.x, y: roundedPos.y };
+    await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [oldId]);
+    pendingMoveOriginals.delete(oldId);
+    try {
+        const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
+        if (newDoc?.id) {
+            pendingMoveOriginals.set(newDoc.id, origData);
+        }
+    } catch (err) {
+        // The original was already deleted; recreate it so the move failure doesn't lose the template.
+        console.error(`${MODULE_TITLE} | Failed to place moved template; restoring original.`, err);
+        await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+    }
+}
+
+// Reverses every deferred change when the dialog is canceled: recreates each deleted template,
+// and for each moved template deletes the relocated copy and recreates the original. Each step
+// is isolated so one failure doesn't abort the rest of the rollback.
+async function rollbackCanceledChanges(pendingRemovalOriginals, pendingMoveOriginals) {
+    for (const origData of pendingRemovalOriginals.values()) {
+        try {
+            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+        } catch (err) {
+            console.error(`${MODULE_TITLE} | Failed to restore a deleted template on cancel.`, err);
+        }
+    }
+    for (const [newId, origData] of pendingMoveOriginals) {
+        try {
+            await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);
+            await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
+        } catch (err) {
+            console.error(`${MODULE_TITLE} | Failed to restore a moved template on cancel.`, err);
+        }
+    }
+}
+
 async function openConfig(bar, initialTab = "templates", resumeState = null) {
     const barHidden     = game.settings.get(MODULE_ID, "barHidden");
     const pendingCustom = resumeState?.pendingCustom ?? [...getCustomTemplates()];
@@ -530,13 +649,6 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     const pendingMoveOriginals     = resumeState?.pendingMoveOriginals     ?? new Map();
 
     let moveRequested = null;
-
-    const tab   = (name) => `stb-tab${name === initialTab ? " stb-tab-active" : ""}`;
-    const panel = (name) => `stb-tab-panel${name === initialTab ? "" : " stb-tab-panel-hidden"}`;
-
-    const renderTemplatesBody = () => pendingCustom.length === 0
-        ? `<tr class="stb-no-custom-row"><td colspan="7">${translate("Templates.Empty")}</td></tr>`
-        : pendingCustom.map((tpl, i) => makeCustomRow(tpl, i)).join("");
 
     function renderMoveTab($html) {
         const movePanelEl = $html.find('[data-panel="move"]');
@@ -564,7 +676,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
                     break;
                 }
             }
-            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
+            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody(pendingCustom));
         });
 
         $html.on("click", ".stb-add-btn", () => {
@@ -581,7 +693,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             pendingCustom.push({ name, t, distance, angle, width, height, fillColor });
             if (pendingGrid.length === 0) pendingGrid.push([name]);
             else pendingGrid[pendingGrid.length - 1].push(name);
-            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
+            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody(pendingCustom));
             $html.find(".stb-new-name").val("").focus();
         });
 
@@ -700,7 +812,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             pendingClearTemplates = true;
             pendingCustom.splice(0);
             pendingGrid.splice(0, pendingGrid.length, []);
-            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody());
+            $html.find('[data-panel="templates"] tbody').html(renderTemplatesBody(pendingCustom));
 
             if (!$html.find("[data-panel='layout']").hasClass("stb-tab-panel-hidden")) {
                 renderLayoutEditor($html, pendingGrid, pendingCustom);
@@ -710,67 +822,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
         });
     }
 
-    const content = `
-        <div class="stb-tabs">
-            <button type="button" class="${tab("templates")}" data-tab="templates">${translate("Tab.Templates")}</button>
-            <button type="button" class="${tab("move")}"      data-tab="move">${translate("Tab.Move")}</button>
-            <button type="button" class="${tab("layout")}"    data-tab="layout">${translate("Tab.Layout")}</button>
-            <button type="button" class="${tab("reset")}"     data-tab="reset">${translate("Tab.Reset")}</button>
-            <button type="button" class="${tab("extra")}"     data-tab="extra">${translate("Tab.Extra")}</button>
-        </div>
-        <div class="${panel("templates")}" data-panel="templates">
-            <table class="stb-config-table">
-                <thead>
-                    <tr><th>${translate("Table.Name")}</th><th>${translate("Table.Shape")}</th><th>${translate("Table.Size")}</th><th>${translate("Table.Width")}</th><th>${translate("Table.Angle")}</th><th>${translate("Table.Color")}</th><th></th></tr>
-                </thead>
-                <tbody>
-                    ${renderTemplatesBody()}
-                </tbody>
-            </table>
-            <div class="stb-add-section">
-                <div class="stb-add-form">
-                    <div class="stb-form-row">
-                        <label>${translate("Form.Name")}</label>
-                        <input type="text" class="stb-new-name" placeholder="${escapeHtml(translate("Form.NamePlaceholder"))}">
-                    </div>
-                    ${buildTemplateFormHtml("new-", "#ff0000")}
-                    <button type="button" class="stb-add-btn">${translate("Templates.AddButton")}</button>
-                </div>
-            </div>
-        </div>
-        <div class="${panel("layout")}" data-panel="layout"></div>
-        <div class="${panel("move")}" data-panel="move"></div>
-        <div class="${panel("extra")}" data-panel="extra">
-            <div class="stb-extra-panel">
-                <label class="stb-extra-item">
-                    <input type="checkbox" class="stb-hide-bar-checkbox"${barHidden ? " checked" : ""}>
-                    <div>
-                        <strong>${translate("Extra.HideBarTitle")}</strong>
-                        <p>${translate("Extra.HideBarDesc")}</p>
-                        <p>${translate("Extra.HideBarRestore")}</p>
-                    </div>
-                </label>
-            </div>
-        </div>
-        <div class="${panel("reset")}" data-panel="reset">
-            <div class="stb-reset-panel">
-                <div class="stb-reset-item">
-                    <div>
-                        <strong>${translate("Reset.PositionTitle")}</strong>
-                        <p>${translate("Reset.PositionDesc")}</p>
-                    </div>
-                    <button type="button" class="stb-reset-position-btn">${translate("Reset.PositionButton")}</button>
-                </div>
-                <div class="stb-reset-item">
-                    <div>
-                        <strong>${translate("Reset.ClearTitle")}</strong>
-                        <p>${translate("Reset.ClearDesc")}</p>
-                    </div>
-                    <button type="button" class="stb-clear-templates-btn">${translate("Reset.ClearButton")}</button>
-                </div>
-            </div>
-        </div>
-    `;
+    const content = buildConfigContent(pendingCustom, barHidden, initialTab);
 
     await foundry.applications.api.DialogV2.wait({
         window:      { title: translate("Dialog.Title", { title: MODULE_TITLE }) },
@@ -828,21 +880,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
             const raw = tpl.toObject();
             const newPos = await pickNewPosition(raw);
             if (newPos) {
-                const roundedPos = { x: Math.round(newPos.x), y: Math.round(newPos.y) };
-                const origData = pendingMoveOriginals.get(moveRequested) ?? templateToCreateData(raw);
-                const createData = { ...origData, x: roundedPos.x, y: roundedPos.y };
-                await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [moveRequested]);
-                pendingMoveOriginals.delete(moveRequested);
-                try {
-                    const [newDoc] = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [createData]);
-                    if (newDoc?.id) {
-                        pendingMoveOriginals.set(newDoc.id, origData);
-                    }
-                } catch (err) {
-                    // The original was already deleted; recreate it so the move failure doesn't lose the template.
-                    console.error(`${MODULE_TITLE} | Failed to place moved template; restoring original.`, err);
-                    await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
-                }
+                await commitMove(moveRequested, raw, newPos, pendingMoveOriginals);
             }
         }
         await openConfig(bar, "move", {
@@ -853,21 +891,7 @@ async function openConfig(bar, initialTab = "templates", resumeState = null) {
     }
 
     if (!saved) {
-        for (const origData of pendingRemovalOriginals.values()) {
-            try {
-                await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
-            } catch (err) {
-                console.error(`${MODULE_TITLE} | Failed to restore a deleted template on cancel.`, err);
-            }
-        }
-        for (const [newId, origData] of pendingMoveOriginals) {
-            try {
-                await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", [newId]);
-                await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [origData]);
-            } catch (err) {
-                console.error(`${MODULE_TITLE} | Failed to restore a moved template on cancel.`, err);
-            }
-        }
+        await rollbackCanceledChanges(pendingRemovalOriginals, pendingMoveOriginals);
         if (pendingResetPosition) bar.css(originalPosition);
         if (pendingClearTemplates) renderCustomButtons(bar);
         if (barHidden) bar.hide();
@@ -935,6 +959,6 @@ Hooks.once("ready", () => {
     });
 });
 
-if (typeof module !== "undefined") module.exports = {};
+if (typeof module !== "undefined") module.exports = { buildConfigContent, renderTemplatesBody, commitMove, rollbackCanceledChanges };
 })();
 
