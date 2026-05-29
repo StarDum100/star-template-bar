@@ -264,7 +264,9 @@ function buildMoveContent(templates, pendingMoveOriginals) {
                 <td>${angleCell}</td>
                 <td><span class="stb-color-swatch" style="background:${safeColor}"></span></td>
                 <td class="stb-action-cell">
-                    <button type="button" class="stb-move-template-btn" title="${moveTitle}">&#9999;</button>
+                    <button type="button" class="stb-move-template-btn" title="${moveTitle}">&#8597;</button>
+                </td>
+                <td class="stb-action-cell">
                     <button type="button" class="stb-remove-template-btn" title="${removeTitle}">&#10005;</button>
                 </td>
             </tr>
@@ -272,7 +274,7 @@ function buildMoveContent(templates, pendingMoveOriginals) {
     }).join("");
     return `
         <table class="stb-config-table">
-            <thead><tr><th>${escapeHtml(translate("Table.Name"))}</th><th>${escapeHtml(translate("Table.Owner"))}</th><th>${escapeHtml(translate("Table.Shape"))}</th><th>${escapeHtml(translate("Table.Size"))}</th><th>${escapeHtml(translate("Table.Angle"))}</th><th>${escapeHtml(translate("Table.Color"))}</th><th></th></tr></thead>
+            <thead><tr><th>${escapeHtml(translate("Table.Name"))}</th><th>${escapeHtml(translate("Table.Owner"))}</th><th>${escapeHtml(translate("Table.Shape"))}</th><th>${escapeHtml(translate("Table.Size"))}</th><th>${escapeHtml(translate("Table.Angle"))}</th><th>${escapeHtml(translate("Table.Color"))}</th><th></th><th></th></tr></thead>
             <tbody>${rows}</tbody>
         </table>
     `;
