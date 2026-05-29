@@ -28,6 +28,36 @@ A FoundryVTT module that adds a draggable template bar to the UI, letting you pl
 2. Paste the manifest URL into the field at the bottom and click **Install**.
 3. Enable the module in your world under **Manage Modules**.
 
+## Examples
+
+Saved templates appear as colored buttons on the bar. Clicking one — or the **Place** button — opens the placement dialog and shows a live preview you click to drop on the map:
+
+![Template bar with custom buttons beside the Place Template dialog and a live circle preview on the map](images/examples/place_template.png)
+
+### Configuration
+
+The gear opens a dialog with five tabs.
+
+**Templates** — add, edit, and delete named templates (shape, size, width/height, angle, color); each becomes a button on the bar:
+
+![Templates tab listing saved templates and the add-template form](images/examples/config_templates.png)
+
+**Move** — lists every template on the current scene; pick one up to reposition it, or delete it. Changes are deferred until you Save:
+
+![Move tab listing placed templates next to several measured shapes on the map](images/examples/config_move.png)
+
+**Layout** — drag template buttons to reorder them and choose how many rows the bar uses:
+
+![Layout tab with draggable template tiles and a row-count input](images/examples/config_layout.png)
+
+**Reset** — move the bar back to its default position or clear every saved template:
+
+![Reset tab with Reset Position and Clear Templates buttons](images/examples/config_reset.png)
+
+**Extra** — hide the bar (restore it from Foundry's game settings), or size newly placed templates to the grid:
+
+![Extra tab with the Hide Button Bar and Size-new-templates-to-the-grid options](images/examples/config_extra.png)
+
 ## Development
 
 ### Prerequisites
