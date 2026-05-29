@@ -114,7 +114,7 @@ global.foundry.applications.api.DialogV2.wait = jest.fn().mockImplementation((op
     return new Promise(r => { resolveDialog = r; });
 });
 
-const { commitMove, rollbackCanceledChanges } = require("../scripts/main.js");
+const { commitMove, rollbackCanceledChanges, hasModuleDims, moduleDimsFromFlags } = require("../scripts/main.js");
 
 // Wrap window.addEventListener so tests can inspect pointerdown registrations
 // while still delegating to the real jsdom implementation.
@@ -2491,6 +2491,59 @@ describe("commitMove / rollbackCanceledChanges (deferred-change helpers)", () =>
             expect(create).toHaveBeenCalledTimes(2);
             expect(errSpy).toHaveBeenCalled();
             errSpy.mockRestore();
+        });
+    });
+});
+
+// Direct unit tests for the shared template-dimension helpers extracted from pickNewPosition
+// and templateToCreateData. They're pure (no canvas/DOM), so they're asserted directly.
+describe("template dimension helpers", () => {
+    describe("hasModuleDims", () => {
+        it("is true when a dimension flag is present and no non-module tag is set", () => {
+            expect(hasModuleDims({ distance: 20 })).toBe(true);
+            expect(hasModuleDims({ width: 30 })).toBe(true);
+            expect(hasModuleDims({ height: 40 })).toBe(true);
+        });
+
+        it("is false when no dimension flags are present", () => {
+            expect(hasModuleDims({})).toBe(false);
+        });
+
+        it("is false when tagged as a non-module template, even with dimension flags", () => {
+            expect(hasModuleDims({ distance: 20, _nonModule: true })).toBe(false);
+            expect(hasModuleDims({ width: 30, height: 40, _nonModuleRect: true })).toBe(false);
+        });
+    });
+
+    describe("moduleDimsFromFlags", () => {
+        it("uses the stored distance for non-rect shapes", () => {
+            expect(moduleDimsFromFlags({ distance: 20 }, "circle")).toEqual({ distance: 20, width: 20 });
+        });
+
+        it("floors distance and width at 5 for non-rect shapes", () => {
+            expect(moduleDimsFromFlags({ distance: 3 }, "cone")).toEqual({ distance: 5, width: 5 });
+        });
+
+        it("uses the width flag independently of distance for rays", () => {
+            expect(moduleDimsFromFlags({ distance: 60, width: 10 }, "ray")).toEqual({ distance: 60, width: 10 });
+        });
+
+        it("computes rect distance as the height×√2 diagonal and width from the width flag", () => {
+            expect(moduleDimsFromFlags({ width: 30, height: 40 }, "rect")).toEqual({
+                distance: 40 * Math.SQRT2,
+                width: 30,
+            });
+        });
+
+        it("falls back to the width flag for rect distance when height is absent", () => {
+            expect(moduleDimsFromFlags({ width: 30 }, "rect")).toEqual({
+                distance: 30 * Math.SQRT2,
+                width: 30,
+            });
+        });
+
+        it("defaults a missing distance flag to 20 for non-rect shapes", () => {
+            expect(moduleDimsFromFlags({ angle: 90 }, "cone")).toEqual({ distance: 20, width: 20 });
         });
     });
 });

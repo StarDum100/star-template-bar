@@ -31,6 +31,8 @@ State is stored in two places:
 
 The `gridDist()` and `gridWidthScale()` helpers translate between Foundry's internal distance units and display feet. Non-module templates (placed outside this module) need different scaling applied via `templateToCreateData()`.
 
+`pickNewPosition()` (move preview) and `templateToCreateData()` (persisted create-data) share two pure, exported helpers for the module-flagged case: `hasModuleDims(f)` (the "does this template carry our dimension flags" guard) and `moduleDimsFromFlags(f, t)` (the `{ distance, width }` derivation — rect distance is the height×√2 diagonal). Each caller layers on its own `angle`/`direction` and non-module handling, which intentionally differ between the preview and create-data paths, so only the identical guard + dimension math is shared.
+
 ### Config dialog and deferred saves
 
 `openConfig(bar, initialTab, resumeState)` manages all pending changes in local variables (`pendingCustom`, `pendingGrid`, `pendingRemovalOriginals`, `pendingMoveOriginals`, `pendingResetPosition`). Nothing is written to flags until the Save button fires. It owns the per-tab event wiring and delegates the dialog markup to `buildConfigContent(pendingCustom, barHidden, initialTab)` (which calls `renderTemplatesBody(pendingCustom)` for the Templates-tab rows).

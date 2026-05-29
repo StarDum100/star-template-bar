@@ -132,6 +132,27 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
     });
 }
 
+// True when a template carries this module's dimension flags (written when it's placed or
+// sized through Star Template Bar) and wasn't tagged as imported from a non-module source.
+// Both the move-preview and the persisted create-data paths branch on this.
+function hasModuleDims(f) {
+    return !f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null);
+}
+
+// Distance/width for a template that carries module flags. For a rect, `distance` is the
+// diagonal of its width x height box (height falls back to width); other shapes use the stored
+// distance floored at 5. Width is always floored at 5 (Foundry's minimum template size).
+// Callers layer on their own `angle`/`direction` (which differ between preview and create-data).
+function moduleDimsFromFlags(f, t) {
+    const fd = f.distance ?? 20;
+    const fw = f.width    ?? fd;
+    const fh = f.height;
+    return {
+        distance: t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd),
+        width:    Math.max(5, fw ?? fd),
+    };
+}
+
 function pickNewPosition(templateData) {
     if (!canvas?.scene) return null;
 
@@ -141,14 +162,12 @@ function pickNewPosition(templateData) {
     const { x: startX, y: startY } = canvas.mousePosition;
 
     let overrides;
-    if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
-        const fd = f.distance ?? 20;
-        const fw = f.width    ?? fd;
-        const fh = f.height;
+    if (hasModuleDims(f)) {
+        const { distance, width } = moduleDimsFromFlags(f, t);
         overrides = {
-            distance:  t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd),
+            distance,
+            width,
             angle:     f.angle ?? 53.13,
-            width:     Math.max(5, fw ?? fd),
             direction: t === "rect" ? 45 : 0,
         };
     } else {
@@ -181,12 +200,8 @@ function pickNewPosition(templateData) {
 function templateToCreateData(raw) {
     const f = raw.flags?.[MODULE_ID] ?? {};
     let distance, width, direction, flags;
-    if (!f._nonModuleRect && !f._nonModule && (f.distance != null || f.width != null || f.height != null)) {
-        const fd = f.distance ?? 20;
-        const fw = f.width    ?? fd;
-        const fh = f.height;
-        distance  = raw.t === "rect" ? (fh ?? fw) * Math.SQRT2 : Math.max(5, fd);
-        width     = Math.max(5, fw ?? fd);
+    if (hasModuleDims(f)) {
+        ({ distance, width } = moduleDimsFromFlags(f, raw.t));
         direction = raw.t === "rect" ? 45 : (raw.direction ?? 0);
         flags     = raw.flags;
     } else {
@@ -959,6 +974,6 @@ Hooks.once("ready", () => {
     });
 });
 
-if (typeof module !== "undefined") module.exports = { buildConfigContent, renderTemplatesBody, commitMove, rollbackCanceledChanges };
+if (typeof module !== "undefined") module.exports = { buildConfigContent, renderTemplatesBody, commitMove, rollbackCanceledChanges, hasModuleDims, moduleDimsFromFlags };
 })();
 
