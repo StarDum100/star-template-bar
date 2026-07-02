@@ -65,6 +65,19 @@ function getBarGrid(customTemplates = getCustomTemplates()) {
     return [customTemplates.map(t => t.name)];
 }
 
+function snapPoint(point) {
+    // v13's Grid#getSnappedPoint(point, behavior) requires a snapping-behavior
+    // argument — it destructures `mode` from it and throws if it's undefined.
+    // The templates layer knows the correct behavior for MeasuredTemplates, so
+    // prefer it; fall back to an explicit centre-snap so the grid never gets an
+    // undefined behavior.
+    if (typeof canvas.templates?.getSnappedPoint === "function") {
+        return canvas.templates.getSnappedPoint(point);
+    }
+    const mode = globalThis.CONST?.GRID_SNAPPING_MODES?.CENTER ?? 1;
+    return canvas.grid.getSnappedPoint(point, { mode });
+}
+
 function withPlacementListeners(template, onPlaceCb) {
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = "crosshair";
@@ -81,7 +94,7 @@ function withPlacementListeners(template, onPlaceCb) {
 
         const onMove = () => {
             const { x, y } = canvas.mousePosition;
-            const snapped  = canvas.grid.getSnappedPoint({ x, y });
+            const snapped  = snapPoint({ x, y });
             template.document.updateSource({ x: snapped.x, y: snapped.y });
             template.refresh?.();
         };
@@ -132,7 +145,7 @@ function placeTemplate({ t, distance, angle, width, height, fillColor, name }) {
 
     return withPlacementListeners(template, async () => {
         const { x: rawX, y: rawY } = canvas.mousePosition;
-        const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
+        const { x, y } = snapPoint({ x: rawX, y: rawY });
         await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
             ...templateData, x, y,
             flags: {
@@ -209,7 +222,7 @@ function pickNewPosition(templateData) {
 
     return withPlacementListeners(template, () => {
         const { x: rawX, y: rawY } = canvas.mousePosition;
-        const { x, y } = canvas.grid.getSnappedPoint({ x: rawX, y: rawY });
+        const { x, y } = snapPoint({ x: rawX, y: rawY });
         return { x, y };
     });
 }

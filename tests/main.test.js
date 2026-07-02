@@ -651,6 +651,29 @@ describe("Star Template Bar", () => {
             expect(mockTemplateObject.refresh).toHaveBeenCalled();
         });
 
+        it("passes a snapping behavior to grid.getSnappedPoint (v13 requires it)", async () => {
+            // v13's Grid#getSnappedPoint destructures `mode` from its second
+            // argument; calling it with only a point throws. Verify we always
+            // supply a behavior object when falling back to the grid.
+            await triggerPlaceFromDialog();
+            for (const call of global.canvas.grid.getSnappedPoint.mock.calls) {
+                expect(call[1]).toEqual(expect.objectContaining({ mode: expect.any(Number) }));
+            }
+            expect(global.canvas.grid.getSnappedPoint).toHaveBeenCalled();
+        });
+
+        it("prefers the templates layer's getSnappedPoint when available", async () => {
+            const layerSnap = jest.fn(({ x, y }) => ({ x, y }));
+            global.canvas.templates.getSnappedPoint = layerSnap;
+            try {
+                await triggerPlaceFromDialog();
+                expect(layerSnap).toHaveBeenCalled();
+                expect(global.canvas.grid.getSnappedPoint).not.toHaveBeenCalled();
+            } finally {
+                delete global.canvas.templates.getSnappedPoint;
+            }
+        });
+
         it("creates the template at canvas.mousePosition when the canvas is clicked", async () => {
             global.canvas.mousePosition = { x: 300, y: 150 };
             await triggerPlaceFromDialog();
