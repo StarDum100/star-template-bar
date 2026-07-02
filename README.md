@@ -18,8 +18,8 @@ A FoundryVTT module that adds a draggable template bar to the UI, letting you pl
 ## Compatibility
 
 | Module Version | Foundry Version |
-|---|---|
-| 1.0.0 | v14 |
+|----------------|-----------------|
+| 1.0.2          | v13             |
 
 ## Installation
 
