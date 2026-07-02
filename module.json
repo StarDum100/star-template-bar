@@ -2,7 +2,7 @@
   "id": "star-template-bar",
   "title": "Star Template Bar",
   "description": "Manage placed templates on the game map with a draggable template bar.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "url": "https://github.com/StarDum100/star-template-bar",
   "manifest": "https://github.com/StarDum100/star-template-bar/releases/latest/download/module.json",
@@ -13,7 +13,7 @@
     }
   ],
   "compatibility": {
-    "minimum": "14",
+    "minimum": "13",
     "verified": "14.362"
   },
   "esmodules": [
